@@ -77,16 +77,21 @@ export function ensureCsrfToken(req, res, next) {
     });
   }
 
-  res.locals.csrfToken = token;
+  res.locals.csrfToken = `${token}.${sign(token)}`;
   next();
 }
 
 export function requireCsrf(req, res, next) {
   const cookies = parseCookies(req.headers.cookie);
   const cookieToken = getSignedValue(cookies[CSRF_COOKIE]);
-  const bodyToken = req.body?._csrf;
+  const bodyToken = String(req.body?._csrf || "");
+  const signedBodyToken = getSignedValue(bodyToken);
 
-  if (!cookieToken || !bodyToken || bodyToken !== cookieToken) {
+  if (!signedBodyToken) {
+    return res.status(403).send("Forbidden");
+  }
+
+  if (cookieToken && cookieToken !== signedBodyToken) {
     return res.status(403).send("Forbidden");
   }
 
@@ -113,6 +118,9 @@ export function requireTrustedOrigin(req, res, next) {
     const source = origin || (referer ? new URL(referer).origin : "");
     const sourceHost = source ? new URL(source).host : "";
     if (host && sourceHost === host) return next();
+    if (process.env.PUBLIC_URL && sourceHost === new URL(process.env.PUBLIC_URL).host) {
+      return next();
+    }
     if (!source || allowedOrigins.has(source)) return next();
   } catch {
     return res.status(403).send("Forbidden");
