@@ -178,6 +178,11 @@ export function validateProductionConfig() {
   const ownerPassword = process.env.OWNER_PASSWORD || "";
   const ownerSecret = process.env.OWNER_SESSION_SECRET || "";
 
+  if (!ownerPassword) {
+    console.warn("OWNER_PASSWORD is not set. Owner gallery routes will remain unavailable.");
+    return;
+  }
+
   if (ownerPassword.length < 12 || weakOwnerPasswords.has(ownerPassword.toLowerCase())) {
     throw new Error("OWNER_PASSWORD must be strong before running in production.");
   }

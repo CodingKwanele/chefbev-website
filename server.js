@@ -28,14 +28,26 @@ app.locals.socialLinks = {
   tiktok: process.env.TIKTOK_URL || "",
 };
 
+function isMongoUri(value) {
+  return /^mongodb(\+srv)?:\/\//.test(String(value || ""));
+}
+
 // MongoDB connection
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => console.log("✓ MongoDB connected"))
-  .catch((err) => {
-    console.error("✗ MongoDB connection error:", err.message);
-    process.exit(1);
-  });
+if (isMongoUri(process.env.MONGO_URI)) {
+  mongoose
+    .connect(process.env.MONGO_URI, {
+      serverSelectionTimeoutMS: 8000,
+    })
+    .then(() => console.log("MongoDB connected"))
+    .catch((err) => {
+      console.error("MongoDB connection error:", err.message);
+      if (!process.env.VERCEL) {
+        process.exit(1);
+      }
+    });
+} else {
+  console.warn("MONGO_URI is missing or invalid. Order and contact submissions will not work.");
+}
 
 // MongoDB runtime error handling
 mongoose.connection.on("error", (err) => {
@@ -61,7 +73,9 @@ process.on("SIGINT", gracefulShutdown);
 // Unhandled promise rejection handler
 process.on("unhandledRejection", (err) => {
   console.error("Unhandled Promise Rejection:", err);
-  process.exit(1);
+  if (!process.env.VERCEL) {
+    process.exit(1);
+  }
 });
 
 // Middleware
