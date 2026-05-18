@@ -3,6 +3,9 @@ import crypto from "crypto";
 const CSRF_COOKIE = "bev_csrf";
 const ONE_HOUR = 60 * 60 * 1000;
 
+// NOTE: This Map resets on every cold Vercel invocation — it only limits
+// traffic within a single warm instance. For real brute-force protection
+// replace with a persistent store (e.g. Upstash Redis).
 const buckets = new Map();
 
 function getSecret() {

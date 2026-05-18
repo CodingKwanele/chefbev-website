@@ -26,18 +26,13 @@ app.locals.socialLinks = {
   instagram: process.env.INSTAGRAM_URL || "",
   tiktok: process.env.TIKTOK_URL || "",
 };
+app.locals.bevWhatsapp = process.env.BEV_WHATSAPP || "";
 
 // Graceful shutdown handler
 const gracefulShutdown = async (signal) => {
   console.log(`${signal} received, shutting down...`);
   process.exit(0);
 };
-
-console.log("EMAIL CONFIG:", {
-  host: process.env.EMAIL_HOST,
-  port: process.env.EMAIL_PORT,
-  user: process.env.EMAIL_USER,
-});
 
 process.on("SIGTERM", gracefulShutdown);
 process.on("SIGINT", gracefulShutdown);
@@ -75,6 +70,13 @@ app.use(
   })
 );
 app.use(ensureCsrfToken);
+app.use((req, res, next) => {
+  if (req.method === "GET" && req.accepts("html")) {
+    res.setHeader("Cache-Control", "no-store");
+  }
+
+  next();
+});
 
 // EJS Layout configuration
 app.use(expressLayouts);
@@ -101,7 +103,7 @@ app.get("/health", (req, res) => {
 
 // 404 handler
 app.use((req, res) => {
-  res.status(404).send("404 - Page Not Found");
+  res.status(404).render("404", { title: "Page not found", active: "" });
 });
 
 // Error handler

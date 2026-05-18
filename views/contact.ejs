@@ -108,7 +108,7 @@
             <span class="info-item__icon">📱</span>
             <div class="info-item__content">
               <div class="info-item__label">WhatsApp</div>
-              <a href="https://wa.me/<%= process.env.BEV_WHATSAPP || '27821234567' %>" class="info-item__value">
+              <a href="https://wa.me/<%= bevWhatsapp %>" class="info-item__value">
                 +27 82 123 4567
               </a>
             </div>
@@ -145,7 +145,7 @@
           <h4>Prefer WhatsApp?</h4>
           <p>For the fastest response, message us directly on WhatsApp!</p>
           <a 
-            href="https://wa.me/<%= process.env.BEV_WHATSAPP || '27821234567' %>?text=Hi%20Chef%20Bev%2C%20I%20have%20a%20question..." 
+            href="https://wa.me/<%= bevWhatsapp %>?text=Hi%20Chef%20Bev%2C%20I%20have%20a%20question..." 
             class="btn btn--primary btn--block"
           >
             Chat on WhatsApp

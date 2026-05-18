@@ -54,8 +54,8 @@ export async function createOrder(form) {
   };
 
   assertMin(order.customerName, 2, "Name must be at least 2 characters");
-  if (!isPhone(order.phone)) throw new Error(`${order.phone} is not a valid phone number`);
-  if (order.email && !isEmail(order.email)) throw new Error(`${order.email} is not a valid email address`);
+  if (!isPhone(order.phone)) throw new Error("Phone number is not valid");
+  if (order.email && !isEmail(order.email)) throw new Error("Email address is not valid");
   assertOneOf(order.occasion, occasions, `${order.occasion} is not a valid occasion type`);
   assertMin(order.size, 2, "Size description must be at least 2 characters");
   assertMin(order.flavour, 2, "Flavour must be at least 2 characters");

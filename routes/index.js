@@ -105,7 +105,7 @@ router.get("/owner/login", (req, res) => {
   });
 });
 
-router.post("/owner/login", requireTrustedOrigin, ownerLoginLimit, requireCsrf, rejectHoneypot, (req, res) => {
+router.post("/owner/login", requireTrustedOrigin, ownerLoginLimit, requireCsrf, rejectHoneypot, async (req, res) => {
   if (!isOwnerConfigured()) {
     return res.status(503).render("owner-login", {
       title: "Owner Login",
@@ -116,6 +116,7 @@ router.post("/owner/login", requireTrustedOrigin, ownerLoginLimit, requireCsrf, 
   }
 
   if (!timingSafeEqualText(req.body.password, process.env.OWNER_PASSWORD)) {
+    await new Promise((resolve) => setTimeout(resolve, 600));
     return res.redirect("/owner/login?error=true");
   }
 
