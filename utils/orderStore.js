@@ -10,7 +10,7 @@ import {
 } from "./validation.js";
 
 const occasions = ["Birthday", "Wedding", "Graduation", "Baby Shower", "Corporate", "Other"];
-const budgets = ["", "R500â€“R800", "R800â€“R1200", "R1200â€“R2000", "R2000+"];
+const budgets = ["", "R500–R800", "R800–R1200", "R1200–R2000", "R2000+"];
 
 function parseFutureDate(value) {
   const eventDate = new Date(value);
