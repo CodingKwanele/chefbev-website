@@ -87,6 +87,10 @@ export function requireCsrf(req, res, next) {
   const bodyToken = String(req.body?._csrf || "");
   const signedBodyToken = getSignedValue(bodyToken);
 
+  if (cookieToken && bodyToken === cookieToken) {
+    return next();
+  }
+
   if (!signedBodyToken) {
     return res.status(403).send("Forbidden");
   }
