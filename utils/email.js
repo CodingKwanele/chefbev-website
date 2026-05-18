@@ -1,48 +1,38 @@
 import nodemailer from "nodemailer";
 
-/**
- * Sends a new order email to Bev.
- * - Uses Gmail SMTP (supports 465 SSL or 587 STARTTLS)
- * - Verifies SMTP connection before sending (helps debugging)
- */
-export async function sendOrderEmail({ order, form }) {
+function getEmailConfig() {
   const host = process.env.EMAIL_HOST;
-  const port = Number(process.env.EMAIL_PORT || 465);
+  const port = Number(process.env.EMAIL_PORT || 587);
   const user = process.env.EMAIL_USER;
   const pass = process.env.EMAIL_PASS;
-  const to = process.env.BEV_ORDER_TO;
+  const to = process.env.BEV_ORDER_TO || process.env.EMAIL_USER;
 
   if (!host || !user || !pass || !to) {
-    throw new Error(
-      "Email missing config: EMAIL_HOST/EMAIL_USER/EMAIL_PASS/BEV_ORDER_TO"
-    );
+    throw new Error("Email is not configured in environment variables.");
   }
 
-  const is465 = port === 465;
+  return { host, port, user, pass, to };
+}
 
-    console.log("EMAIL_USER:", user);
-    console.log("EMAIL_PASS length:", (pass || "").replace(/\s/g, "").length);
-    console.log("EMAIL_PASS has spaces:", /\s/.test(pass || ""));
-    console.log("EMAIL_PORT:", port);
+function createTransporter({ host, port, user, pass }) {
+  const secure = port === 465;
 
-
-  const transporter = nodemailer.createTransport({
+  return nodemailer.createTransport({
     host,
     port,
-    secure: is465, // 465 = SSL, 587 = STARTTLS
+    secure,
     auth: { user, pass },
-
-    // Hardening (helps ECONNRESET / TLS negotiation issues)
-    requireTLS: !is465, // for 587
+    requireTLS: !secure,
     tls: {
       servername: host,
       minVersion: "TLSv1.2",
     },
   });
+}
 
-  // Verify SMTP connection (TEMPORARY - keep while testing)
-  await transporter.verify();
-  console.log("✓ SMTP verified");
+export async function sendOrderEmail({ order, form }) {
+  const config = getEmailConfig();
+  const transporter = createTransporter(config);
 
   const formattedDate = new Date(order.eventDate).toLocaleDateString("en-ZA", {
     year: "numeric",
@@ -50,10 +40,10 @@ export async function sendOrderEmail({ order, form }) {
     day: "numeric",
   });
 
-  const subject = `New Cake Order — ${order.occasion} (${order._id})`;
+  const subject = `New Cake Order - ${order.occasion} (${order._id})`;
 
   const text = [
-    "New order received ✅",
+    "New order received",
     "",
     `Order Reference: ${order._id}`,
     "",
@@ -78,12 +68,12 @@ export async function sendOrderEmail({ order, form }) {
     .join("\n");
 
   await transporter.sendMail({
-    from: `"Chef Bev Website" <${user}>`,
-    to,
+    from: `"Chef Bev Website" <${config.user}>`,
+    to: config.to,
     replyTo: form?.email || undefined,
     subject,
     text,
   });
 
-  console.log("✓ Order email sent:", { to, orderId: String(order._id) });
+  console.log("Order email sent:", { to: config.to, orderId: String(order._id) });
 }
