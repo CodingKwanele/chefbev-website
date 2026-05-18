@@ -38,3 +38,9 @@ export function assertOneOf(value, allowed, message) {
     throw new Error(message);
   }
 }
+
+export function removeUndefined(data) {
+  return Object.fromEntries(
+    Object.entries(data).filter((entry) => entry[1] !== undefined)
+  );
+}

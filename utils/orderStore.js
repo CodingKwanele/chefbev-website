@@ -7,6 +7,7 @@ import {
   isEmail,
   isPhone,
   optionalText,
+  removeUndefined,
 } from "./validation.js";
 
 const occasions = ["Birthday", "Wedding", "Graduation", "Baby Shower", "Corporate", "Other"];
@@ -35,7 +36,7 @@ export async function createOrder(form) {
     throw new Error("Firebase is not configured. Orders cannot be saved yet.");
   }
 
-  const order = {
+  const order = removeUndefined({
     customerName: cleanText(form.customerName, 80),
     phone: cleanText(form.phone, 30),
     email: optionalText(form.email, 120)?.toLowerCase(),
@@ -51,7 +52,7 @@ export async function createOrder(form) {
     status: "New",
     createdAt: new Date(),
     updatedAt: new Date(),
-  };
+  });
 
   assertMin(order.customerName, 2, "Name must be at least 2 characters");
   if (!isPhone(order.phone)) throw new Error("Phone number is not valid");

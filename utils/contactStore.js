@@ -1,12 +1,12 @@
 import { getFirestore, isFirebaseConfigured } from "./firebase.js";
-import { assertMin, cleanText, isEmail, isPhone, optionalText } from "./validation.js";
+import { assertMin, cleanText, isEmail, isPhone, optionalText, removeUndefined } from "./validation.js";
 
 export async function createContact(form) {
   if (!isFirebaseConfigured()) {
     throw new Error("Firebase is not configured. Contact messages cannot be saved yet.");
   }
 
-  const contact = {
+  const contact = removeUndefined({
     name: cleanText(form.name, 80),
     email: cleanText(form.email, 120).toLowerCase(),
     phone: optionalText(form.phone, 30),
@@ -15,7 +15,7 @@ export async function createContact(form) {
     status: "New",
     createdAt: new Date(),
     updatedAt: new Date(),
-  };
+  });
 
   assertMin(contact.name, 2, "Name must be at least 2 characters");
   if (!isEmail(contact.email)) throw new Error(`${contact.email} is not a valid email address`);

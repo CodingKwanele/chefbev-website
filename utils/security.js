@@ -54,6 +54,29 @@ function getSignedValue(raw) {
   return String(raw).split(".")[0];
 }
 
+function forbid(req, res, reason) {
+  console.warn("Security block:", {
+    reason,
+    method: req.method,
+    path: req.originalUrl || req.url,
+    host: req.get("host") || "",
+    originHost: safeHost(req.get("origin")),
+    refererHost: safeHost(req.get("referer")),
+  });
+
+  return res.status(403).send("Forbidden");
+}
+
+function safeHost(value) {
+  if (!value) return "";
+
+  try {
+    return new URL(value).host;
+  } catch {
+    return "";
+  }
+}
+
 function setCookie(res, name, value, options = {}) {
   const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
   const httpOnly = options.httpOnly === false ? "" : "; HttpOnly";
@@ -95,11 +118,11 @@ export function requireCsrf(req, res, next) {
   }
 
   if (!signedBodyToken) {
-    return res.status(403).send("Forbidden");
+    return forbid(req, res, "csrf_missing_or_invalid");
   }
 
   if (cookieToken && cookieToken !== signedBodyToken) {
-    return res.status(403).send("Forbidden");
+    return forbid(req, res, "csrf_cookie_mismatch");
   }
 
   next();
@@ -130,10 +153,10 @@ export function requireTrustedOrigin(req, res, next) {
     }
     if (!source || allowedOrigins.has(source)) return next();
   } catch {
-    return res.status(403).send("Forbidden");
+    return forbid(req, res, "origin_parse_failed");
   }
 
-  return res.status(403).send("Forbidden");
+  return forbid(req, res, "origin_not_allowed");
 }
 
 export function rejectHoneypot(req, res, next) {
