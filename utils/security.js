@@ -135,23 +135,18 @@ export function requireTrustedOrigin(req, res, next) {
   const origin = req.get("origin");
   const referer = req.get("referer");
   const host = req.get("host");
-  const allowedOrigins = new Set(
-    [
-      host ? `${req.protocol}://${host}` : "",
-      host ? `https://${host}` : "",
-      host ? `http://${host}` : "",
-      process.env.PUBLIC_URL || "",
-    ].filter(Boolean)
-  );
+  const source = origin || referer || "";
+
+  if (!source) return next();
 
   try {
-    const source = origin || (referer ? new URL(referer).origin : "");
-    const sourceHost = source ? new URL(source).host : "";
+    const sourceHost = new URL(source).host;
+
     if (host && sourceHost === host) return next();
-    if (process.env.PUBLIC_URL && sourceHost === new URL(process.env.PUBLIC_URL).host) {
+
+    if (process.env.PUBLIC_URL && sourceHost === safeHost(process.env.PUBLIC_URL)) {
       return next();
     }
-    if (!source || allowedOrigins.has(source)) return next();
   } catch {
     return forbid(req, res, "origin_parse_failed");
   }
