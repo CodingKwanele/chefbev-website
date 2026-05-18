@@ -1,0 +1,103 @@
+<section class="section">
+  <div class="container">
+    <div class="section__head">
+      <h1 class="section__title">Gallery</h1>
+      <p class="section__sub">
+        Tap a style you like — then click <strong>Order this style</strong> to prefill your order form.
+      </p>
+    </div>
+
+    <!-- Filter bar -->
+    <div class="gallerybar" role="region" aria-label="Gallery filters">
+      <div class="tabs" role="tablist" aria-label="Cake categories">
+        <% categories.forEach((c) => { %>
+          <button
+            class="tab <%= defaultCategory === c.key ? 'is-active' : '' %>"
+            type="button"
+            role="tab"
+            aria-selected="<%= defaultCategory === c.key ? 'true' : 'false' %>"
+            data-cat="<%= c.key %>"
+          >
+            <%= c.label %>
+          </button>
+        <% }) %>
+      </div>
+
+      <div class="search">
+        <input
+          class="search__input"
+          type="search"
+          placeholder="Search styles (e.g. floral, pink, minimal)..."
+          aria-label="Search gallery styles"
+          id="gallerySearch"
+        />
+      </div>
+    </div>
+
+    <!-- Gallery grid -->
+    <div class="gallerygrid" id="galleryGrid">
+      <% if (items && items.length > 0) { %>
+        <% items.forEach((it) => { %>
+          <article
+            class="gcard"
+            data-cat="<%= it.category %>"
+            data-title="<%= (it.title + ' ' + it.tag).toLowerCase() %>"
+          >
+            <div class="gcard__media">
+              <img src="<%= it.src %>" alt="<%= it.title %> cake" loading="lazy" />
+              <span class="gcard__pill"><%= it.tag %></span>
+            </div>
+
+            <div class="gcard__body">
+              <h3 class="gcard__title"><%= it.title %></h3>
+
+              <div class="gcard__actions">
+                <a class="btn btn--primary" href="/orders?style=<%= encodeURIComponent(it.title) %>&img=<%= encodeURIComponent(it.src) %>">
+                  Order this style
+                </a>
+
+                <button class="btn btn--ghost gcard__preview" type="button" data-img="<%= it.src %>" data-title="<%= it.title %>">
+                  Quick view
+                </button>
+              </div>
+            </div>
+          </article>
+        <% }) %>
+      <% } else { %>
+        <div class="empty">
+          <div class="empty__title">No items available</div>
+          <div class="empty__sub">Check back soon for new cake styles.</div>
+        </div>
+      <% } %>
+    </div>
+
+    <!-- Empty state (for search/filter) -->
+    <div class="empty" id="galleryEmpty" hidden>
+      <div class="empty__title">No matches</div>
+      <div class="empty__sub">Try another category or a different search word.</div>
+    </div>
+  </div>
+</section>
+
+<!-- Quick View Modal -->
+<div class="modal" id="galleryModal" aria-hidden="true">
+  <div class="modal__backdrop" data-close="true" role="button" tabindex="0" aria-label="Close preview"></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-label="Cake preview">
+    <button class="modal__close" type="button" data-close="true" aria-label="Close preview">×</button>
+
+    <div class="modal__media">
+      <img id="modalImg" src="" alt="" />
+    </div>
+
+    <div class="modal__body">
+      <div class="modal__title" id="modalTitle"></div>
+      <div class="modal__actions">
+        <a class="btn btn--primary" id="modalOrderBtn" href="#">Order this style</a>
+        <button class="btn btn--ghost" type="button" data-close="true">Close</button>
+      </div>
+      <p class="modal__fine">You can still customize everything in the order form — this just pre-fills the style.</p>
+    </div>
+  </div>
+</div>
+
+<script src="/js/gallery.js" defer></script>

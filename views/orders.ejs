@@ -1,0 +1,190 @@
+<!-- views/orders.ejs -->
+<section class="section">
+  <div class="container">
+    <div class="section__head">
+      <h1 class="section__title">Place an Order</h1>
+      <p class="section__sub">
+        Fill in the details below. After you submit, WhatsApp will open so you can message Bev instantly.
+      </p>
+    </div>
+
+    <% if (error) { %>
+      <div class="alert alert--error"><%= error %></div>
+    <% } %>
+
+    <form class="form" method="post" action="/orders">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <div class="hp-field" aria-hidden="true">
+        <label>Website <input name="website" tabindex="-1" autocomplete="off" /></label>
+      </div>
+      <div class="form__grid">
+
+        <!-- Name -->
+        <label class="field">
+          <span class="field__label">Your name</span>
+          <input
+            class="field__input"
+            name="customerName"
+            required
+            maxlength="80"
+            value="<%= formData?.customerName || '' %>"
+          />
+        </label>
+
+        <!-- WhatsApp number -->
+        <label class="field">
+          <span class="field__label">WhatsApp number</span>
+          <input
+            class="field__input"
+            name="phone"
+            required
+            placeholder="+27..."
+            maxlength="30"
+            value="<%= formData?.phone || '' %>"
+          />
+        </label>
+
+        <!-- Email -->
+        <label class="field">
+          <span class="field__label">Email (optional)</span>
+          <input
+            class="field__input"
+            type="email"
+            name="email"
+            maxlength="120"
+            value="<%= formData?.email || '' %>"
+          />
+        </label>
+
+        <!-- Event date -->
+        <label class="field">
+          <span class="field__label">Event date</span>
+          <input
+            class="field__input"
+            type="date"
+            name="eventDate"
+            required
+            value="<%= formData?.eventDate || '' %>"
+          />
+        </label>
+
+        <!-- Occasion -->
+        <label class="field">
+          <span class="field__label">Occasion</span>
+          <select class="field__input" name="occasion" required>
+            <option value="">Select…</option>
+            <option <%= (formData?.occasion === 'Birthday') ? 'selected' : '' %>>Birthday</option>
+            <option <%= (formData?.occasion === 'Wedding') ? 'selected' : '' %>>Wedding</option>
+            <option <%= (formData?.occasion === 'Graduation') ? 'selected' : '' %>>Graduation</option>
+            <option <%= (formData?.occasion === 'Baby Shower') ? 'selected' : '' %>>Baby Shower</option>
+            <option <%= (formData?.occasion === 'Corporate') ? 'selected' : '' %>>Corporate</option>
+            <option <%= (formData?.occasion === 'Other') ? 'selected' : '' %>>Other</option>
+          </select>
+        </label>
+
+        <!-- Cake style (NEW) -->
+        <label class="field">
+          <span class="field__label">Cake style (optional)</span>
+          <input
+            class="field__input"
+            name="style"
+            maxlength="80"
+            placeholder="e.g. Elegant Floral / Pink Drip / Minimal White"
+            value="<%= formData?.style || prefill?.style || '' %>"
+          />
+        </label>
+
+        <!-- Size -->
+        <label class="field">
+          <span class="field__label">Size / servings</span>
+          <input
+            class="field__input"
+            name="size"
+            required
+            placeholder="e.g. 20 servings / Medium"
+            maxlength="40"
+            value="<%= formData?.size || '' %>"
+          />
+        </label>
+
+        <!-- Flavour -->
+        <label class="field">
+          <span class="field__label">Flavour</span>
+          <input
+            class="field__input"
+            name="flavour"
+            required
+            placeholder="Vanilla, Red Velvet, Chocolate…"
+            maxlength="60"
+            value="<%= formData?.flavour || '' %>"
+          />
+        </label>
+
+        <!-- Budget -->
+        <label class="field">
+          <span class="field__label">Budget (optional)</span>
+          <select class="field__input" name="budget">
+            <option value="">Select…</option>
+            <option <%= (formData?.budget === 'R500–R800') ? 'selected' : '' %>>R500–R800</option>
+            <option <%= (formData?.budget === 'R800–R1200') ? 'selected' : '' %>>R800–R1200</option>
+            <option <%= (formData?.budget === 'R1200–R2000') ? 'selected' : '' %>>R1200–R2000</option>
+            <option <%= (formData?.budget === 'R2000+') ? 'selected' : '' %>>R2000+</option>
+          </select>
+        </label>
+
+        <!-- Notes -->
+        <label class="field field--full">
+          <span class="field__label">Design notes</span>
+          <textarea
+            class="field__input"
+            name="notes"
+            rows="5"
+            required
+            maxlength="1200"
+            placeholder="Theme, colours, any writing on the cake, allergens, pickup time..."
+          ><%=
+            formData?.notes ||
+            (!formData?.style && prefill?.style ? `Style: ${prefill.style}\n` : "")
+          %></textarea>
+          <p class="field__hint">
+            Tip: Include theme colours, what to write on the cake, allergies, and pickup time.
+          </p>
+        </label>
+
+        <!-- Inspiration -->
+        <label class="field field--full">
+          <span class="field__label">Inspiration link (optional)</span>
+          <input
+            class="field__input"
+            type="url"
+            name="inspirationUrl"
+            placeholder="https://instagram.com/... or Google Drive link"
+            maxlength="300"
+            value="<%= formData?.inspirationUrl || prefill?.img || '' %>"
+          />
+
+          <% if (prefill?.img) { %>
+            <div class="inspo">
+              <div class="inspo__label">Selected style preview</div>
+              <img class="inspo__img" src="<%= prefill.img %>" alt="Selected cake preview" loading="lazy" />
+              <div class="inspo__meta">
+                <span class="chip">From Gallery</span>
+                <% if (prefill?.style) { %><span class="chip"><%= prefill.style %></span><% } %>
+              </div>
+            </div>
+          <% } %>
+        </label>
+
+      </div>
+
+      <div class="form__actions">
+        <button class="btn btn--primary" type="submit">Submit order</button>
+        <a class="btn btn--ghost" href="/gallery">View Gallery</a>
+      </div>
+
+      <p class="form__fine">
+        Tip: after WhatsApp opens, you can also attach inspiration pictures directly there.
+      </p>
+    </form>
+  </div>
+</section>

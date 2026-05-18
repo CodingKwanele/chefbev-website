@@ -1,0 +1,91 @@
+<section class="section">
+  <div class="container owner-shell">
+    <div class="section__head owner-head">
+      <div>
+        <h1 class="section__title">Gallery manager</h1>
+        <p class="section__sub">Add and remove the cake photos customers see in the public gallery.</p>
+      </div>
+
+      <form method="post" action="/owner/logout">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+        <button class="btn btn--ghost" type="submit">Log out</button>
+      </form>
+    </div>
+
+    <% if (success) { %>
+      <div class="alert alert--success"><%= success %></div>
+    <% } %>
+
+    <% if (error) { %>
+      <div class="alert alert--error"><%= error %></div>
+    <% } %>
+
+    <% if (!firebaseReady) { %>
+      <div class="alert alert--info">Firebase is not configured yet. Add the Firebase values in .env to enable uploads.</div>
+    <% } %>
+
+    <form class="form owner-panel" method="post" action="/owner/gallery" enctype="multipart/form-data">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <div class="hp-field" aria-hidden="true">
+        <label>Website <input name="website" tabindex="-1" autocomplete="off" /></label>
+      </div>
+      <div class="form__grid">
+        <div class="field">
+          <label class="field__label" for="title">Photo title <span class="required">*</span></label>
+          <input class="field__input" id="title" name="title" type="text" placeholder="Elegant floral cake" required />
+        </div>
+
+        <div class="field">
+          <label class="field__label" for="tag">Display tag <span class="required">*</span></label>
+          <input class="field__input" id="tag" name="tag" type="text" placeholder="Weddings" required />
+        </div>
+
+        <div class="field">
+          <label class="field__label" for="category">Category <span class="required">*</span></label>
+          <select class="field__input" id="category" name="category" required>
+            <% categories.filter((c) => c.key !== "all").forEach((c) => { %>
+              <option value="<%= c.key %>"><%= c.label %></option>
+            <% }) %>
+          </select>
+        </div>
+
+        <div class="field">
+          <label class="field__label" for="image">Cake photo <span class="required">*</span></label>
+          <input class="field__input" id="image" name="image" type="file" accept="image/*" required />
+          <div class="field__help">Use a clear photo. JPG, PNG, and WebP images work well.</div>
+        </div>
+      </div>
+
+      <div class="form__actions">
+        <button class="btn btn--primary" type="submit">Add photo</button>
+        <a class="btn btn--ghost" href="/gallery">View public gallery</a>
+      </div>
+    </form>
+
+    <div class="owner-list">
+      <% if (items && items.length > 0) { %>
+        <% items.forEach((it) => { %>
+          <article class="owner-item">
+            <img class="owner-item__img" src="<%= it.src %>" alt="<%= it.title %> cake" loading="lazy" />
+            <div class="owner-item__body">
+              <h2><%= it.title %></h2>
+              <p><%= it.tag %> · <%= it.category %></p>
+            </div>
+
+            <% if (it.id) { %>
+              <form method="post" action="/owner/gallery/<%= it.id %>/delete">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                <button class="btn btn--ghost btn--danger" type="submit">Delete</button>
+              </form>
+            <% } %>
+          </article>
+        <% }) %>
+      <% } else { %>
+        <div class="empty">
+          <div class="empty__title">No photos yet</div>
+          <div class="empty__sub">Upload the first cake photo above.</div>
+        </div>
+      <% } %>
+    </div>
+  </div>
+</section>

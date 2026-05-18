@@ -1,0 +1,158 @@
+<section class="section">
+  <div class="container">
+    <div class="section__head">
+      <h1 class="section__title">Contact Us</h1>
+      <p class="section__sub">
+        Have a question? Send us a message and we'll get back to you soon.
+      </p>
+    </div>
+
+    <% if (success) { %>
+      <div class="alert alert--success">
+        Thank you for your inquiry! We've received your message and will respond soon.
+      </div>
+    <% } %>
+
+    <% if (error) { %>
+      <div class="alert alert--error"><%= error %></div>
+    <% } %>
+
+    <div class="contact-layout">
+      <!-- Contact Form -->
+      <div class="contact-form">
+        <form class="form" method="post" action="/contact">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+          <div class="hp-field" aria-hidden="true">
+            <label>Website <input name="website" tabindex="-1" autocomplete="off" /></label>
+          </div>
+          <div class="form__grid">
+
+            <!-- Name -->
+            <label class="field">
+              <span class="field__label">Your name</span>
+              <input
+                class="field__input"
+                name="name"
+                required
+                maxlength="80"
+                value="<%= formData?.name || '' %>"
+              />
+            </label>
+
+            <!-- Email -->
+            <label class="field">
+              <span class="field__label">Email address</span>
+              <input
+                class="field__input"
+                type="email"
+                name="email"
+                required
+                maxlength="120"
+                value="<%= formData?.email || '' %>"
+              />
+            </label>
+
+            <!-- Phone (optional) -->
+            <label class="field">
+              <span class="field__label">Phone number (optional)</span>
+              <input
+                class="field__input"
+                type="tel"
+                name="phone"
+                placeholder="+27..."
+                maxlength="30"
+                value="<%= formData?.phone || '' %>"
+              />
+            </label>
+
+            <!-- Subject -->
+            <label class="field">
+              <span class="field__label">Subject</span>
+              <input
+                class="field__input"
+                name="subject"
+                required
+                placeholder="e.g. General inquiry, Custom order question..."
+                maxlength="100"
+                value="<%= formData?.subject || '' %>"
+              />
+            </label>
+
+            <!-- Message -->
+            <label class="field field--full">
+              <span class="field__label">Message</span>
+              <textarea
+                class="field__input"
+                name="message"
+                rows="6"
+                required
+                maxlength="1000"
+                placeholder="Tell us how we can help you..."
+              ><%= formData?.message || '' %></textarea>
+            </label>
+
+          </div>
+
+          <div class="form__actions">
+            <button class="btn btn--primary" type="submit">Send Message</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Contact Info -->
+      <div class="contact-info">
+        <div class="info-card">
+          <h3 class="info-card__title">Get in Touch</h3>
+          
+          <div class="info-item">
+            <span class="info-item__icon">📱</span>
+            <div class="info-item__content">
+              <div class="info-item__label">WhatsApp</div>
+              <a href="https://wa.me/<%= process.env.BEV_WHATSAPP || '27821234567' %>" class="info-item__value">
+                +27 82 123 4567
+              </a>
+            </div>
+          </div>
+
+          <div class="info-item">
+            <span class="info-item__icon">📧</span>
+            <div class="info-item__content">
+              <div class="info-item__label">Email</div>
+              <a href="mailto:hello@chefbev.co.za" class="info-item__value">
+                hello@chefbev.co.za
+              </a>
+            </div>
+          </div>
+
+          <div class="info-item">
+            <span class="info-item__icon">⏰</span>
+            <div class="info-item__content">
+              <div class="info-item__label">Business Hours</div>
+              <div class="info-item__value">Mon-Fri: 9am - 5pm<br>Sat: 10am - 2pm</div>
+            </div>
+          </div>
+
+          <div class="info-item">
+            <span class="info-item__icon">📍</span>
+            <div class="info-item__content">
+              <div class="info-item__label">Location</div>
+              <div class="info-item__value">Johannesburg, South Africa</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="info-card info-card--highlight">
+          <h4>Prefer WhatsApp?</h4>
+          <p>For the fastest response, message us directly on WhatsApp!</p>
+          <a 
+            href="https://wa.me/<%= process.env.BEV_WHATSAPP || '27821234567' %>?text=Hi%20Chef%20Bev%2C%20I%20have%20a%20question..." 
+            class="btn btn--primary btn--block"
+          >
+            Chat on WhatsApp
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>

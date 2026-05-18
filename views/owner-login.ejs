@@ -1,0 +1,32 @@
+<section class="section">
+  <div class="container owner-shell owner-shell--narrow">
+    <div class="section__head">
+      <h1 class="section__title">Owner login</h1>
+      <p class="section__sub">Manage Chef Bev gallery photos.</p>
+    </div>
+
+    <% if (error) { %>
+      <div class="alert alert--error"><%= error %></div>
+    <% } %>
+
+    <% if (!configured) { %>
+      <div class="alert alert--info">Set OWNER_PASSWORD in .env before using this area.</div>
+    <% } %>
+
+    <form class="form owner-panel" method="post" action="/owner/login">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <div class="hp-field" aria-hidden="true">
+        <label>Website <input name="website" tabindex="-1" autocomplete="off" /></label>
+      </div>
+      <div class="field">
+        <label class="field__label" for="password">Password <span class="required">*</span></label>
+        <input class="field__input" id="password" name="password" type="password" autocomplete="current-password" required />
+      </div>
+
+      <div class="form__actions">
+        <button class="btn btn--primary" type="submit">Log in</button>
+        <a class="btn btn--ghost" href="/gallery">Back to gallery</a>
+      </div>
+    </form>
+  </div>
+</section>

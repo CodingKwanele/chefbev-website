@@ -1,0 +1,170 @@
+<section class="hero">
+  <div class="container hero__grid">
+    <div class="hero__copy">
+      <p class="badge">Handcrafted • Elegant • Made to order</p>
+
+      <h1 class="hero__title">
+        Luxury cakes for moments that deserve to be remembered.
+      </h1>
+
+      <p class="hero__subtitle">
+        Elegant designs, rich flavour, and a flawless finish — from birthdays to weddings and everything in between.
+      </p>
+
+      <div class="hero__actions">
+        <a class="btn btn--primary" href="/orders">Place an Order</a>
+        <a class="btn btn--ghost" href="/gallery">View Gallery</a>
+      </div>
+
+      <!-- NEW: Premium feature chips -->
+      <div class="hero__chips">
+        <span class="chip">Custom designs</span>
+        <span class="chip">Pickup only</span>
+        <span class="chip">Signature flavours</span>
+      </div>
+
+      <div class="hero__trust">
+        <div class="trustcard">
+          <div class="trustcard__top">Fast response</div>
+          <div class="trustcard__sub">We confirm details quickly</div>
+        </div>
+        <div class="trustcard">
+          <div class="trustcard__top">Custom designs</div>
+          <div class="trustcard__sub">Bring your inspiration</div>
+        </div>
+        <div class="trustcard">
+          <div class="trustcard__top">Premium finish</div>
+          <div class="trustcard__sub">Luxury look + taste</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero__visual" aria-label="Featured cakes">
+    <div class="glass">
+        <img class="hero__photo" src="/img/hero-cake.jpg" alt="Featured cake by Chef Bev">
+    </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <div class="section__head">
+      <h2 class="section__title">How it works</h2>
+      <p class="section__sub">A simple process that keeps the experience smooth and stress-free.</p>
+    </div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step__num">01</div>
+        <div class="step__title">Tell us your idea</div>
+        <div class="step__text">Share your theme, colours, date, size, and inspiration picture.</div>
+      </div>
+      <div class="step">
+        <div class="step__num">02</div>
+        <div class="step__title">We confirm details</div>
+        <div class="step__text">We confirm pricing, flavours, and pickup time.</div>
+      </div>
+      <div class="step">
+        <div class="step__num">03</div>
+        <div class="step__title">We bake the magic</div>
+        <div class="step__text">Freshly baked with premium finishing for your special moment.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<% if (featuredItems && featuredItems.length > 0) { %>
+  <section class="section section--alt">
+    <div class="container">
+      <div class="section__head">
+        <h2 class="section__title">Featured favourites</h2>
+        <p class="section__sub">A few recent styles from Bev's gallery.</p>
+      </div>
+
+      <div class="grid">
+        <% featuredItems.forEach((it) => { %>
+          <article class="card">
+            <a class="card__media" href="/orders?style=<%= encodeURIComponent(it.title) %>&img=<%= encodeURIComponent(it.src) %>" aria-label="Order <%= it.title %>">
+              <img src="<%= it.src %>" alt="<%= it.title %> cake" loading="lazy" />
+            </a>
+            <div class="card__body">
+              <h3 class="card__title"><%= it.title %></h3>
+              <p class="card__text">Custom cake inspiration from Chef Bev's gallery.</p>
+              <div class="card__meta"><%= it.tag %></div>
+            </div>
+          </article>
+        <% }) %>
+      </div>
+
+      <div class="section__cta">
+        <a class="btn btn--primary" href="/gallery">See more cakes</a>
+        <a class="btn btn--ghost" href="/orders">Get a quote</a>
+      </div>
+    </div>
+  </section>
+<% } %>
+
+<section class="section">
+  <div class="container">
+    <div class="section__head">
+      <h2 class="section__title">What clients say</h2>
+      <p class="section__sub">Real reactions — the best part of the job.</p>
+    </div>
+
+    <div class="quotes">
+      <figure class="quote">
+        <blockquote>“The cake looked expensive and tasted even better. Everyone asked where it’s from.”</blockquote>
+        <figcaption>— Happy Client</figcaption>
+      </figure>
+
+      <figure class="quote">
+        <blockquote>“She understood my theme immediately. The finishing was clean and premium.”</blockquote>
+        <figcaption>— Event Customer</figcaption>
+      </figure>
+
+      <figure class="quote">
+        <blockquote>“On-time, professional, and the flavour was perfect. 10/10.”</blockquote>
+        <figcaption>— Birthday Order</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<section class="section section--alt">
+  <div class="container">
+    <div class="section__head">
+      <h2 class="section__title">FAQ</h2>
+      <p class="section__sub">Quick answers so you can order with confidence.</p>
+    </div>
+
+    <div class="faq">
+      <details class="faq__item">
+        <summary>How early should I order?</summary>
+        <p>For best availability, order 5–10 days in advance. Weddings/events may need more time.</p>
+      </details>
+
+      <details class="faq__item">
+        <summary>Do you do custom designs?</summary>
+        <p>Yes — send your inspiration pic and we’ll tailor the design to your theme and budget.</p>
+      </details>
+
+      <details class="faq__item">
+        <summary>How is payment handled?</summary>
+        <p>Payment is confirmed after we finalise your design and due date. Details will be shared during confirmation.</p>
+      </details>
+    </div>
+
+    <div class="banner">
+      <div class="banner__copy">
+        <h3>Ready to order?</h3>
+        <p>Tell us the date, theme, and size — we’ll handle the luxury.</p>
+      </div>
+      <div class="banner__actions">
+        <a class="btn btn--primary" href="/orders">Place an Order</a>
+        <a class="btn btn--ghost" href="/contact">Ask a question</a>
+      </div>
+    </div>
+  </div>
+</section>

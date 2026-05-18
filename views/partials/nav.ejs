@@ -1,0 +1,21 @@
+<header class="nav">
+  <div class="container nav__inner">
+    <a class="nav__brand" href="/" aria-label="Chef Bev Luxury Cakes Home">
+      <img
+        src="/img/logo.png"
+        alt="Chef Bev Luxury Cakes logo"
+        class="nav__logo"
+      />
+      <span class="brandtext">Chef Bev Luxury Cakes</span>
+    </a>
+
+    <nav class="nav__links" aria-label="Primary">
+      <a class="<%= active === 'home' ? 'is-active' : '' %>" href="/">Home</a>
+      <a class="<%= active === 'gallery' ? 'is-active' : '' %>" href="/gallery">Gallery</a>
+      <a class="<%= active === 'orders' ? 'is-active' : '' %>" href="/orders">Order</a>
+      <a class="<%= active === 'contact' ? 'is-active' : '' %>" href="/contact">Contact</a>
+    </nav>
+
+    <a class="btn btn--primary nav__cta" href="/orders">Place an Order</a>
+  </div>
+</header>
