@@ -2,7 +2,6 @@ import express from "express";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
-import mongoose from "mongoose";
 import expressLayouts from "express-ejs-layouts";
 import helmet from "helmet";
 
@@ -28,36 +27,9 @@ app.locals.socialLinks = {
   tiktok: process.env.TIKTOK_URL || "",
 };
 
-function isMongoUri(value) {
-  return /^mongodb(\+srv)?:\/\//.test(String(value || ""));
-}
-
-// MongoDB connection
-if (isMongoUri(process.env.MONGO_URI)) {
-  mongoose
-    .connect(process.env.MONGO_URI, {
-      serverSelectionTimeoutMS: 8000,
-    })
-    .then(() => console.log("MongoDB connected"))
-    .catch((err) => {
-      console.error("MongoDB connection error:", err.message);
-      if (!process.env.VERCEL) {
-        process.exit(1);
-      }
-    });
-} else {
-  console.warn("MONGO_URI is missing or invalid. Order and contact submissions will not work.");
-}
-
-// MongoDB runtime error handling
-mongoose.connection.on("error", (err) => {
-  console.error("MongoDB runtime error:", err);
-});
-
 // Graceful shutdown handler
 const gracefulShutdown = async (signal) => {
-  console.log(`${signal} received, closing connections...`);
-  await mongoose.connection.close();
+  console.log(`${signal} received, shutting down...`);
   process.exit(0);
 };
 
@@ -122,7 +94,7 @@ app.get("/health", (req, res) => {
   res.status(200).json({
     status: "OK",
     uptime: process.uptime(),
-    mongodb: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+    storage: "firebase",
     timestamp: new Date().toISOString(),
   });
 });

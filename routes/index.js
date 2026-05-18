@@ -1,9 +1,8 @@
 // routes/index.js
 import { Router } from "express";
 import multer from "multer";
-import Order from "../models/Order.js";
-import Contact from "../models/Contact.js";
 import { sendOrderEmail } from "../utils/email.js";
+import { createContact } from "../utils/contactStore.js";
 import {
   addGalleryItem,
   categories,
@@ -11,6 +10,7 @@ import {
   fallbackGalleryItems,
   getGalleryItems,
 } from "../utils/galleryStore.js";
+import { createOrder } from "../utils/orderStore.js";
 import { isFirebaseConfigured } from "../utils/firebase.js";
 import {
   clearOwnerCookie,
@@ -213,7 +213,7 @@ router.get("/orders", (req, res) => {
 // Orders submit (POST)
 router.post("/orders", requireTrustedOrigin, formSubmitLimit, requireCsrf, rejectHoneypot, async (req, res) => {
   try {
-    const order = new Order({
+    const order = await createOrder({
       customerName: req.body.customerName,
       phone: req.body.phone,
       email: req.body.email || undefined,
@@ -228,8 +228,6 @@ router.post("/orders", requireTrustedOrigin, formSubmitLimit, requireCsrf, rejec
       notes: req.body.notes,
       inspirationUrl: req.body.inspirationUrl || undefined,
     });
-
-    await order.save();
 
     // Send email notification (non-blocking)
     sendOrderEmail({ order, form: req.body }).catch((err) => {
@@ -247,10 +245,7 @@ router.post("/orders", requireTrustedOrigin, formSubmitLimit, requireCsrf, rejec
 
     let errorMessage = "Failed to submit order. Please check your inputs.";
     
-    if (err.name === "ValidationError") {
-      const errors = Object.values(err.errors).map((e) => e.message);
-      errorMessage = errors.join(". ");
-    }
+    errorMessage = err.message || errorMessage;
 
     res.status(400).render("orders", {
       title: "Place an Order",
@@ -279,15 +274,13 @@ router.get("/contact", (req, res) => {
 // Contact submit (POST)
 router.post("/contact", requireTrustedOrigin, formSubmitLimit, requireCsrf, rejectHoneypot, async (req, res) => {
   try {
-    const contact = new Contact({
+    const contact = await createContact({
       name: req.body.name,
       email: req.body.email,
       phone: req.body.phone || undefined,
       subject: req.body.subject,
       message: req.body.message,
     });
-
-    await contact.save();
 
     // Redirect to WhatsApp
     const bevPhone = cleanWhatsAppNumber(process.env.BEV_WHATSAPP);
@@ -300,10 +293,7 @@ router.post("/contact", requireTrustedOrigin, formSubmitLimit, requireCsrf, reje
 
     let errorMessage = "Failed to submit your inquiry. Please check your inputs.";
     
-    if (err.name === "ValidationError") {
-      const errors = Object.values(err.errors).map((e) => e.message);
-      errorMessage = errors.join(". ");
-    }
+    errorMessage = err.message || errorMessage;
 
     res.status(400).render("contact", {
       title: "Contact Us",
