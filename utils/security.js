@@ -103,12 +103,16 @@ export function requireTrustedOrigin(req, res, next) {
   const allowedOrigins = new Set(
     [
       host ? `${req.protocol}://${host}` : "",
+      host ? `https://${host}` : "",
+      host ? `http://${host}` : "",
       process.env.PUBLIC_URL || "",
     ].filter(Boolean)
   );
 
   try {
     const source = origin || (referer ? new URL(referer).origin : "");
+    const sourceHost = source ? new URL(source).host : "";
+    if (host && sourceHost === host) return next();
     if (!source || allowedOrigins.has(source)) return next();
   } catch {
     return res.status(403).send("Forbidden");
