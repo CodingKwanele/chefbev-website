@@ -60,8 +60,12 @@ function forbid(req, res, reason) {
     method: req.method,
     path: req.originalUrl || req.url,
     host: req.get("host") || "",
+    forwardedHost: req.get("x-forwarded-host") || "",
+    vercelForwardedHost: req.get("x-vercel-forwarded-for-host") || "",
     originHost: safeHost(req.get("origin")),
     refererHost: safeHost(req.get("referer")),
+    publicUrlHost: safeHostWithOptionalProtocol(process.env.PUBLIC_URL),
+    vercelUrlHost: safeHostWithOptionalProtocol(process.env.VERCEL_URL),
   });
 
   return res.status(403).send("Forbidden");
@@ -75,6 +79,38 @@ function safeHost(value) {
   } catch {
     return "";
   }
+}
+
+function safeHostWithOptionalProtocol(value) {
+  if (!value) return "";
+  const raw = String(value).trim();
+  const url = raw.includes("://") ? raw : `https://${raw}`;
+  return safeHost(url);
+}
+
+function addHost(hosts, value) {
+  const host = String(value || "").trim().toLowerCase();
+  if (host) hosts.add(host);
+}
+
+function addForwardedHosts(hosts, value) {
+  String(value || "")
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .forEach((host) => addHost(hosts, host));
+}
+
+function getTrustedHosts(req) {
+  const hosts = new Set();
+
+  addHost(hosts, req.get("host"));
+  addForwardedHosts(hosts, req.get("x-forwarded-host"));
+  addForwardedHosts(hosts, req.get("x-vercel-forwarded-for-host"));
+  addHost(hosts, safeHostWithOptionalProtocol(process.env.PUBLIC_URL));
+  addHost(hosts, safeHostWithOptionalProtocol(process.env.VERCEL_URL));
+
+  return hosts;
 }
 
 function isLoopbackHost(host = "") {
@@ -144,6 +180,7 @@ export function requireTrustedOrigin(req, res, next) {
   const origin = req.get("origin");
   const referer = req.get("referer");
   const host = req.get("host");
+  const trustedHosts = getTrustedHosts(req);
 
   // Browsers send the literal string "null" for opaque origins (file://, sandboxed
   // iframes, some privacy modes). Allow it in non-production so local dev isn't broken;
@@ -158,13 +195,8 @@ export function requireTrustedOrigin(req, res, next) {
   if (!source) return next();
 
   try {
-    const sourceHost = new URL(source).host;
-
-    if (host && sourceHost === host) return next();
-
-    if (process.env.PUBLIC_URL && sourceHost === safeHost(process.env.PUBLIC_URL)) {
-      return next();
-    }
+    const sourceHost = new URL(source).host.toLowerCase();
+    if (trustedHosts.has(sourceHost)) return next();
   } catch {
     return forbid(req, res, "origin_parse_failed");
   }
