@@ -77,6 +77,15 @@ function safeHost(value) {
   }
 }
 
+function isLoopbackHost(host = "") {
+  const value = String(host).toLowerCase();
+  const hostname = value.startsWith("[")
+    ? value.slice(1, value.indexOf("]"))
+    : value.split(":")[0];
+
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+}
+
 function setCookie(res, name, value, options = {}) {
   const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
   const httpOnly = options.httpOnly === false ? "" : "; HttpOnly";
@@ -135,6 +144,15 @@ export function requireTrustedOrigin(req, res, next) {
   const origin = req.get("origin");
   const referer = req.get("referer");
   const host = req.get("host");
+
+  // Browsers send the literal string "null" for opaque origins (file://, sandboxed
+  // iframes, some privacy modes). Allow it in non-production so local dev isn't broken;
+  // block it in production where a real, parseable origin is required.
+  if (origin === "null") {
+    if (process.env.NODE_ENV !== "production" || isLoopbackHost(host)) return next();
+    return forbid(req, res, "origin_opaque");
+  }
+
   const source = origin || referer || "";
 
   if (!source) return next();

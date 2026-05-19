@@ -12,6 +12,37 @@
       <div class="alert alert--error"><%= error %></div>
     <% } %>
 
+    <% if (success) { %>
+      <section
+        class="order-success"
+        aria-live="polite"
+        data-whatsapp-url="<%= success.whatsappUrl || '' %>"
+      >
+        <p class="order-success__eyebrow">Order received</p>
+        <h2 class="order-success__title">Thank you<% if (success.customerName) { %>, <%= success.customerName %><% } %>.</h2>
+        <p class="order-success__text">
+          Your order request has been saved. WhatsApp will open next so Bev can confirm the details with you.
+        </p>
+        <% if (success.orderId) { %>
+          <div class="order-success__ref"><%= success.orderId %></div>
+        <% } %>
+        <div class="order-success__actions">
+          <% if (success.whatsappUrl) { %>
+            <a class="btn btn--primary" href="<%= success.whatsappUrl %>" target="_blank" rel="noopener">
+              Open WhatsApp
+            </a>
+          <% } %>
+          <a class="btn btn--ghost" href="/orders">Place another order</a>
+        </div>
+        <p class="order-success__fine">
+          If WhatsApp does not open automatically, tap the WhatsApp button above.
+        </p>
+      </section>
+      <% if (success.whatsappUrl) { %>
+        <script src="/js/order-success.js" defer></script>
+      <% } %>
+    <% } else { %>
+
     <form class="form" method="post" action="/orders">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
       <div class="hp-field" aria-hidden="true">
@@ -186,5 +217,6 @@
         Tip: after WhatsApp opens, you can also attach inspiration pictures directly there.
       </p>
     </form>
+    <% } %>
   </div>
 </section>

@@ -206,7 +206,7 @@ router.get("/orders", (req, res) => {
       img: cleanPrefillImage(img),
     },
     formData: null,
-    success: success === "true",
+    success: success === "true" ? {} : null,
     error: null,
   });
 });
@@ -237,10 +237,23 @@ router.post("/orders", requireTrustedOrigin, formSubmitLimit, requireCsrf, rejec
 
     // Redirect to WhatsApp
     const bevPhone = cleanWhatsAppNumber(process.env.BEV_WHATSAPP);
-    const whatsappMessage = `New order from ${order.customerName}. Order ID: ${order._id}`;
+    const whatsappMessage =
+      `Hi Chef Bev, I just submitted an order request. ` +
+      `My order reference is ${order._id}.`;
     const whatsappUrl = `https://wa.me/${bevPhone}?text=${encodeURIComponent(whatsappMessage)}`;
-    
-    res.redirect(whatsappUrl);
+
+    res.status(201).render("orders", {
+      title: "Order Received",
+      active: "orders",
+      formData: null,
+      prefill: { style: "", img: "" },
+      success: {
+        orderId: order._id,
+        customerName: order.customerName,
+        whatsappUrl,
+      },
+      error: null,
+    });
   } catch (err) {
     console.error("Order submission error:", err);
 

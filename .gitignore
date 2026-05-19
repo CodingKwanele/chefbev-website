@@ -1,6 +1,5 @@
 node_modules/
 .env
-.env.example
 *.log
 *.local
 *-firebase-adminsdk-*.json
