@@ -183,11 +183,10 @@ export function requireTrustedOrigin(req, res, next) {
   const trustedHosts = getTrustedHosts(req);
 
   // Browsers send the literal string "null" for opaque origins (file://, sandboxed
-  // iframes, some privacy modes). Allow it in non-production so local dev isn't broken;
-  // block it in production where a real, parseable origin is required.
+  // iframes, some privacy modes). Let these continue to the CSRF check instead
+  // of blocking valid form submissions from privacy-sensitive browsers.
   if (origin === "null") {
-    if (process.env.NODE_ENV !== "production" || isLoopbackHost(host)) return next();
-    return forbid(req, res, "origin_opaque");
+    return next();
   }
 
   const source = origin || referer || "";
