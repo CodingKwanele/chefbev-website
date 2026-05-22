@@ -34,6 +34,8 @@ TIKTOK_URL=
 
 Keep `.env` and Firebase service-account JSON files out of Git.
 
+Use the exact Storage bucket name shown in Firebase Console > Build > Storage. Newer Firebase projects usually use `PROJECT_ID.firebasestorage.app`; older projects may use `PROJECT_ID.appspot.com`.
+
 ## After Deploying
 
 1. Open `/health` and confirm it returns `{"status":"OK"}`.

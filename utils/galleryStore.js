@@ -45,6 +45,10 @@ function publicStorageUrl(bucketName, filePath, token) {
   return `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(filePath)}?alt=media&token=${token}`;
 }
 
+function isMissingBucketError(err) {
+  return /bucket.*does not exist|specified bucket does not exist/i.test(err?.message || "");
+}
+
 export async function getGalleryItems({ useFallback = true } = {}) {
   if (!isFirebaseConfigured()) {
     return useFallback ? fallbackGalleryItems : [];
@@ -84,15 +88,25 @@ export async function addGalleryItem({ file, title, tag, category }) {
   const token = crypto.randomUUID();
   const storageFile = bucket.file(storagePath);
 
-  await storageFile.save(file.buffer, {
-    resumable: false,
-    contentType: file.mimetype,
-    metadata: {
+  try {
+    await storageFile.save(file.buffer, {
+      resumable: false,
+      contentType: file.mimetype,
       metadata: {
-        firebaseStorageDownloadTokens: token,
+        metadata: {
+          firebaseStorageDownloadTokens: token,
+        },
       },
-    },
-  });
+    });
+  } catch (err) {
+    if (isMissingBucketError(err)) {
+      throw new Error(
+        "Firebase Storage bucket was not found. Check FIREBASE_STORAGE_BUCKET in Vercel and use the exact bucket name from Firebase Console > Storage."
+      );
+    }
+
+    throw err;
+  }
 
   const item = {
     title: cleanText(title, "Cake style"),
