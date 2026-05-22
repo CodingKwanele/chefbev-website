@@ -1,6 +1,6 @@
 // routes/index.js
 import { Router } from "express";
-import { sendOrderEmail } from "../utils/email.js";
+import { sendContactEmail, sendOrderEmail } from "../utils/email.js";
 import { createContact } from "../utils/contactStore.js";
 import {
   categories,
@@ -164,10 +164,16 @@ router.post("/orders", requireTrustedOrigin, formSubmitLimit, requireCsrf, rejec
       inspirationUrl: req.body.inspirationUrl || undefined,
     });
 
-    // Send email notification (non-blocking)
-    sendOrderEmail({ order, form: req.body }).catch((err) => {
-      console.error("Email send failed (non-blocking):", err.message);
-    });
+    try {
+      await sendOrderEmail({ order, form: req.body });
+    } catch (err) {
+      console.error("Order email send failed:", {
+        orderId: String(order._id),
+        message: err.message,
+        code: err.code,
+        response: err.response,
+      });
+    }
 
     // Redirect to WhatsApp
     const bevPhone = cleanWhatsAppNumber(process.env.BEV_WHATSAPP);
@@ -229,6 +235,17 @@ router.post("/contact", requireTrustedOrigin, formSubmitLimit, requireCsrf, reje
       subject: req.body.subject,
       message: req.body.message,
     });
+
+    try {
+      await sendContactEmail({ contact });
+    } catch (err) {
+      console.error("Contact email send failed:", {
+        contactId: String(contact._id),
+        message: err.message,
+        code: err.code,
+        response: err.response,
+      });
+    }
 
     // Redirect to WhatsApp
     const bevPhone = cleanWhatsAppNumber(process.env.BEV_WHATSAPP);

@@ -67,7 +67,7 @@ export async function sendOrderEmail({ order, form }) {
     .filter(Boolean)
     .join("\n");
 
-  await transporter.sendMail({
+  const info = await transporter.sendMail({
     from: `"Chef Bev Website" <${config.user}>`,
     to: config.to,
     replyTo: form?.email || undefined,
@@ -75,5 +75,47 @@ export async function sendOrderEmail({ order, form }) {
     text,
   });
 
-  console.log("Order email sent:", { to: config.to, orderId: String(order._id) });
+  console.log("Order email sent:", {
+    to: config.to,
+    orderId: String(order._id),
+    messageId: info.messageId,
+  });
+}
+
+export async function sendContactEmail({ contact }) {
+  const config = getEmailConfig();
+  const transporter = createTransporter(config);
+  const subject = `New Contact Inquiry - ${contact.subject} (${contact._id})`;
+
+  const text = [
+    "New contact inquiry received",
+    "",
+    `Inquiry Reference: ${contact._id}`,
+    "",
+    "Customer Details",
+    `Name: ${contact.name}`,
+    `Email: ${contact.email}`,
+    contact.phone ? `Phone: ${contact.phone}` : null,
+    "",
+    "Inquiry",
+    `Subject: ${contact.subject}`,
+    "",
+    contact.message,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const info = await transporter.sendMail({
+    from: `"Chef Bev Website" <${config.user}>`,
+    to: config.to,
+    replyTo: contact.email,
+    subject,
+    text,
+  });
+
+  console.log("Contact email sent:", {
+    to: config.to,
+    contactId: String(contact._id),
+    messageId: info.messageId,
+  });
 }
