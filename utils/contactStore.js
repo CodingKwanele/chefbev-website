@@ -33,3 +33,18 @@ export async function createContact(form) {
     id: doc.id,
   };
 }
+
+export async function updateContactNotification(id, notification) {
+  if (!isFirebaseConfigured() || !id) return;
+
+  await getFirestore().collection("contacts").doc(id).update({
+    emailNotification: removeUndefined({
+      status: notification.status,
+      messageId: notification.messageId,
+      attempts: notification.attempts,
+      error: notification.error,
+      updatedAt: new Date(),
+    }),
+    updatedAt: new Date(),
+  });
+}

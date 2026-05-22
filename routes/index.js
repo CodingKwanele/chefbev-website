@@ -1,13 +1,13 @@
 // routes/index.js
 import { Router } from "express";
 import { sendContactEmail, sendOrderEmail } from "../utils/email.js";
-import { createContact } from "../utils/contactStore.js";
+import { createContact, updateContactNotification } from "../utils/contactStore.js";
 import {
   categories,
   fallbackGalleryItems,
   getGalleryItems,
 } from "../utils/galleryStore.js";
-import { createOrder } from "../utils/orderStore.js";
+import { createOrder, updateOrderNotification } from "../utils/orderStore.js";
 import {
   clearOwnerCookie,
   isOwnerConfigured,
@@ -38,6 +38,69 @@ function cleanPrefillImage(value) {
   return (
     safeExternalUrl(raw, ["firebasestorage.googleapis.com", "storage.googleapis.com"]) || ""
   );
+}
+
+function formatDateForMessage(value) {
+  return new Date(value).toLocaleDateString("en-ZA", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+async function markOrderEmail(orderId, notification) {
+  try {
+    await updateOrderNotification(orderId, notification);
+  } catch (err) {
+    console.error("Order email status update failed:", {
+      orderId: String(orderId),
+      message: err.message,
+    });
+  }
+}
+
+async function markContactEmail(contactId, notification) {
+  try {
+    await updateContactNotification(contactId, notification);
+  } catch (err) {
+    console.error("Contact email status update failed:", {
+      contactId: String(contactId),
+      message: err.message,
+    });
+  }
+}
+
+function buildOrderWhatsAppMessage(order) {
+  return [
+    "Hi Chef Bev, I just submitted an order request.",
+    `Reference: ${order._id}`,
+    `Name: ${order.customerName}`,
+    `Phone: ${order.phone}`,
+    order.email ? `Email: ${order.email}` : null,
+    `Occasion: ${order.occasion}`,
+    `Date: ${formatDateForMessage(order.eventDate)}`,
+    `Size: ${order.size}`,
+    `Flavour: ${order.flavour}`,
+    order.style ? `Style: ${order.style}` : null,
+    order.budget ? `Budget: ${order.budget}` : null,
+    `Notes: ${order.notes}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function buildContactWhatsAppMessage(contact) {
+  return [
+    "Hi Chef Bev, I just sent a website inquiry.",
+    `Reference: ${contact._id}`,
+    `Name: ${contact.name}`,
+    `Email: ${contact.email}`,
+    contact.phone ? `Phone: ${contact.phone}` : null,
+    `Subject: ${contact.subject}`,
+    `Message: ${contact.message}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 // Home
@@ -165,7 +228,12 @@ router.post("/orders", requireTrustedOrigin, formSubmitLimit, requireCsrf, rejec
     });
 
     try {
-      await sendOrderEmail({ order, form: req.body });
+      const emailResult = await sendOrderEmail({ order, form: req.body });
+      await markOrderEmail(order._id, {
+        status: "sent",
+        messageId: emailResult.messageId,
+        attempts: emailResult.attempts,
+      });
     } catch (err) {
       console.error("Order email send failed:", {
         orderId: String(order._id),
@@ -173,13 +241,15 @@ router.post("/orders", requireTrustedOrigin, formSubmitLimit, requireCsrf, rejec
         code: err.code,
         response: err.response,
       });
+      await markOrderEmail(order._id, {
+        status: "failed",
+        attempts: 3,
+        error: err.message,
+      });
     }
 
-    // Redirect to WhatsApp
     const bevPhone = cleanWhatsAppNumber(process.env.BEV_WHATSAPP);
-    const whatsappMessage =
-      `Hi Chef Bev, I just submitted an order request. ` +
-      `My order reference is ${order._id}.`;
+    const whatsappMessage = buildOrderWhatsAppMessage(order);
     const whatsappUrl = `https://wa.me/${bevPhone}?text=${encodeURIComponent(whatsappMessage)}`;
 
     res.status(201).render("orders", {
@@ -237,7 +307,12 @@ router.post("/contact", requireTrustedOrigin, formSubmitLimit, requireCsrf, reje
     });
 
     try {
-      await sendContactEmail({ contact });
+      const emailResult = await sendContactEmail({ contact });
+      await markContactEmail(contact._id, {
+        status: "sent",
+        messageId: emailResult.messageId,
+        attempts: emailResult.attempts,
+      });
     } catch (err) {
       console.error("Contact email send failed:", {
         contactId: String(contact._id),
@@ -245,11 +320,15 @@ router.post("/contact", requireTrustedOrigin, formSubmitLimit, requireCsrf, reje
         code: err.code,
         response: err.response,
       });
+      await markContactEmail(contact._id, {
+        status: "failed",
+        attempts: 3,
+        error: err.message,
+      });
     }
 
-    // Redirect to WhatsApp
     const bevPhone = cleanWhatsAppNumber(process.env.BEV_WHATSAPP);
-    const whatsappMessage = `New contact inquiry from ${contact.name}. Inquiry ID: ${contact._id}`;
+    const whatsappMessage = buildContactWhatsAppMessage(contact);
     const whatsappUrl = `https://wa.me/${bevPhone}?text=${encodeURIComponent(whatsappMessage)}`;
 
     res.redirect(whatsappUrl);

@@ -1,5 +1,8 @@
 import nodemailer from "nodemailer";
 
+const EMAIL_ATTEMPTS = 3;
+const RETRY_DELAYS_MS = [500, 1500];
+
 function getEmailConfig() {
   const host = process.env.EMAIL_HOST;
   const port = Number(process.env.EMAIL_PORT || 587);
@@ -23,11 +26,45 @@ function createTransporter({ host, port, user, pass }) {
     secure,
     auth: { user, pass },
     requireTLS: !secure,
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 20000,
     tls: {
       servername: host,
       minVersion: "TLSv1.2",
     },
   });
+}
+
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function sendWithRetry(transporter, mailOptions, context) {
+  let lastError;
+
+  for (let attempt = 1; attempt <= EMAIL_ATTEMPTS; attempt += 1) {
+    try {
+      const info = await transporter.sendMail(mailOptions);
+      return { info, attempts: attempt };
+    } catch (err) {
+      lastError = err;
+      console.error("Email attempt failed:", {
+        ...context,
+        attempt,
+        maxAttempts: EMAIL_ATTEMPTS,
+        message: err.message,
+        code: err.code,
+        response: err.response,
+      });
+
+      if (attempt < EMAIL_ATTEMPTS) {
+        await wait(RETRY_DELAYS_MS[attempt - 1] || 1500);
+      }
+    }
+  }
+
+  throw lastError;
 }
 
 export async function sendOrderEmail({ order, form }) {
@@ -57,7 +94,7 @@ export async function sendOrderEmail({ order, form }) {
     `Date: ${formattedDate}`,
     `Size: ${order.size}`,
     `Flavour: ${order.flavour}`,
-    order.budget ? `Budget: R${order.budget}` : null,
+    order.budget ? `Budget: ${order.budget}` : null,
     `Collection: ${order.fulfilment}`,
     order.inspirationUrl ? `Inspiration: ${order.inspirationUrl}` : null,
     "",
@@ -67,19 +104,26 @@ export async function sendOrderEmail({ order, form }) {
     .filter(Boolean)
     .join("\n");
 
-  const info = await transporter.sendMail({
-    from: `"Chef Bev Website" <${config.user}>`,
-    to: config.to,
-    replyTo: form?.email || undefined,
-    subject,
-    text,
-  });
+  const { info, attempts } = await sendWithRetry(
+    transporter,
+    {
+      from: `"Chef Bev Website" <${config.user}>`,
+      to: config.to,
+      replyTo: form?.email || undefined,
+      subject,
+      text,
+    },
+    { type: "order", id: String(order._id), to: config.to }
+  );
 
   console.log("Order email sent:", {
     to: config.to,
     orderId: String(order._id),
     messageId: info.messageId,
+    attempts,
   });
+
+  return { messageId: info.messageId, attempts };
 }
 
 export async function sendContactEmail({ contact }) {
@@ -105,17 +149,24 @@ export async function sendContactEmail({ contact }) {
     .filter(Boolean)
     .join("\n");
 
-  const info = await transporter.sendMail({
-    from: `"Chef Bev Website" <${config.user}>`,
-    to: config.to,
-    replyTo: contact.email,
-    subject,
-    text,
-  });
+  const { info, attempts } = await sendWithRetry(
+    transporter,
+    {
+      from: `"Chef Bev Website" <${config.user}>`,
+      to: config.to,
+      replyTo: contact.email,
+      subject,
+      text,
+    },
+    { type: "contact", id: String(contact._id), to: config.to }
+  );
 
   console.log("Contact email sent:", {
     to: config.to,
     contactId: String(contact._id),
     messageId: info.messageId,
+    attempts,
   });
+
+  return { messageId: info.messageId, attempts };
 }

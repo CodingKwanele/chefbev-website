@@ -42,3 +42,9 @@ Gallery images are stored in the codebase under `public/img/gallery` and listed 
 3. Confirm the order email arrives.
 4. Confirm the success page opens WhatsApp with the order reference.
 5. Open `/gallery` and confirm the code-managed gallery images load.
+
+## Notification Reliability
+
+Order and contact emails are retried up to three times before being marked failed. Each Firestore `orders` or `contacts` document gets an `emailNotification` object with `status`, `messageId`, `attempts`, and any failure `error`.
+
+WhatsApp messages include the customer details and request summary, so Bev still receives actionable information even if an email provider delays or filters a message.
