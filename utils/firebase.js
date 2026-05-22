@@ -6,17 +6,12 @@ function getPrivateKey() {
   return process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
 }
 
-function getStorageBucketName() {
-  return process.env.FIREBASE_STORAGE_BUCKET?.replace(/^gs:\/\//, "").replace(/\/$/, "");
-}
-
 export function isFirebaseConfigured() {
   return Boolean(
-    getStorageBucketName() &&
-      ((process.env.FIREBASE_PROJECT_ID &&
-        process.env.FIREBASE_CLIENT_EMAIL &&
-        process.env.FIREBASE_PRIVATE_KEY) ||
-        process.env.GOOGLE_APPLICATION_CREDENTIALS)
+    (process.env.FIREBASE_PROJECT_ID &&
+      process.env.FIREBASE_CLIENT_EMAIL &&
+      process.env.FIREBASE_PRIVATE_KEY) ||
+      process.env.GOOGLE_APPLICATION_CREDENTIALS
   );
 }
 
@@ -35,10 +30,7 @@ export function getFirebaseApp() {
         privateKey: getPrivateKey(),
       });
 
-  app = admin.initializeApp({
-    credential,
-    storageBucket: getStorageBucketName(),
-  });
+  app = admin.initializeApp({ credential });
 
   return app;
 }
@@ -46,9 +38,4 @@ export function getFirebaseApp() {
 export function getFirestore() {
   getFirebaseApp();
   return admin.firestore();
-}
-
-export function getStorageBucket() {
-  getFirebaseApp();
-  return admin.storage().bucket();
 }

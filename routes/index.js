@@ -1,17 +1,13 @@
 // routes/index.js
 import { Router } from "express";
-import multer from "multer";
 import { sendOrderEmail } from "../utils/email.js";
 import { createContact } from "../utils/contactStore.js";
 import {
-  addGalleryItem,
   categories,
-  deleteGalleryItem,
   fallbackGalleryItems,
   getGalleryItems,
 } from "../utils/galleryStore.js";
 import { createOrder } from "../utils/orderStore.js";
-import { isFirebaseConfigured } from "../utils/firebase.js";
 import {
   clearOwnerCookie,
   isOwnerConfigured,
@@ -30,51 +26,6 @@ import {
 const router = Router();
 const ownerLoginLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 8, keyPrefix: "owner-login" });
 const formSubmitLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, keyPrefix: "form-submit" });
-const ownerWriteLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, keyPrefix: "owner-write" });
-const galleryUploadLimitBytes = 4 * 1024 * 1024;
-
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: galleryUploadLimitBytes },
-  fileFilter: (req, file, cb) => {
-    const allowed = new Set(["image/jpeg", "image/png", "image/webp"]);
-    if (allowed.has(file.mimetype)) return cb(null, true);
-    return cb(new Error("Only JPG, PNG, and WebP images can be uploaded."));
-  },
-});
-
-async function renderOwnerGalleryUploadError(req, res, errorMessage) {
-  let items = [];
-
-  try {
-    items = await getGalleryItems({ useFallback: false });
-  } catch {
-    items = [];
-  }
-
-  return res.status(400).render("owner-gallery", {
-    title: "Gallery Manager",
-    active: "owner",
-    items,
-    categories,
-    firebaseReady: isFirebaseConfigured(),
-    success: null,
-    error: errorMessage,
-  });
-}
-
-function uploadGalleryImage(req, res, next) {
-  upload.single("image")(req, res, async (err) => {
-    if (!err) return next();
-
-    const errorMessage =
-      err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE"
-        ? "Please upload an image smaller than 4 MB."
-        : err.message || "Could not upload the photo.";
-
-    return renderOwnerGalleryUploadError(req, res, errorMessage);
-  });
-}
 
 function cleanWhatsAppNumber(value) {
   return String(value || "").replace(/[^\d]/g, "");
@@ -94,7 +45,7 @@ router.get("/", async (req, res) => {
   let featuredItems = [];
 
   try {
-    featuredItems = (await getGalleryItems({ useFallback: false })).slice(0, 3);
+    featuredItems = (await getGalleryItems()).slice(0, 3);
   } catch (err) {
     console.error("Featured gallery load error:", err.message);
   }
@@ -163,69 +114,18 @@ router.post("/owner/logout", requireTrustedOrigin, requireOwner, requireCsrf, (r
   res.redirect("/owner/login");
 });
 
-// Owner gallery manager
+// Owner gallery reference
 router.get("/owner/gallery", requireOwner, async (req, res) => {
-  let items = [];
-  let error = null;
-
-  try {
-    items = await getGalleryItems({ useFallback: false });
-  } catch (err) {
-    console.error("Owner gallery load error:", err.message);
-    error = err.message;
-  }
+  const items = await getGalleryItems();
 
   res.render("owner-gallery", {
-    title: "Gallery Manager",
+    title: "Gallery Reference",
     active: "owner",
     items,
     categories,
-    firebaseReady: isFirebaseConfigured(),
     success: req.query.success || null,
-    error,
+    error: null,
   });
-});
-
-router.post("/owner/gallery", requireTrustedOrigin, requireOwner, ownerWriteLimit, uploadGalleryImage, requireCsrf, rejectHoneypot, async (req, res) => {
-  try {
-    await addGalleryItem({
-      file: req.file,
-      title: req.body.title,
-      tag: req.body.tag,
-      category: req.body.category,
-    });
-
-    res.redirect("/owner/gallery?success=Photo%20added");
-  } catch (err) {
-    console.error("Gallery upload error:", err.message);
-
-    let items = [];
-    try {
-      items = await getGalleryItems({ useFallback: false });
-    } catch {
-      items = [];
-    }
-
-    res.status(400).render("owner-gallery", {
-      title: "Gallery Manager",
-      active: "owner",
-      items,
-      categories,
-      firebaseReady: isFirebaseConfigured(),
-      success: null,
-      error: err.message || "Could not upload the photo.",
-    });
-  }
-});
-
-router.post("/owner/gallery/:id/delete", requireTrustedOrigin, requireOwner, ownerWriteLimit, requireCsrf, async (req, res) => {
-  try {
-    await deleteGalleryItem(req.params.id);
-    res.redirect("/owner/gallery?success=Photo%20deleted");
-  } catch (err) {
-    console.error("Gallery delete error:", err.message);
-    res.redirect("/owner/gallery");
-  }
 });
 
 // Orders page (GET)
