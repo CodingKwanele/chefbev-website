@@ -31,16 +31,50 @@ const router = Router();
 const ownerLoginLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 8, keyPrefix: "owner-login" });
 const formSubmitLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, keyPrefix: "form-submit" });
 const ownerWriteLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, keyPrefix: "owner-write" });
+const galleryUploadLimitBytes = 4 * 1024 * 1024;
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 8 * 1024 * 1024 },
+  limits: { fileSize: galleryUploadLimitBytes },
   fileFilter: (req, file, cb) => {
     const allowed = new Set(["image/jpeg", "image/png", "image/webp"]);
     if (allowed.has(file.mimetype)) return cb(null, true);
     return cb(new Error("Only JPG, PNG, and WebP images can be uploaded."));
   },
 });
+
+async function renderOwnerGalleryUploadError(req, res, errorMessage) {
+  let items = [];
+
+  try {
+    items = await getGalleryItems({ useFallback: false });
+  } catch {
+    items = [];
+  }
+
+  return res.status(400).render("owner-gallery", {
+    title: "Gallery Manager",
+    active: "owner",
+    items,
+    categories,
+    firebaseReady: isFirebaseConfigured(),
+    success: null,
+    error: errorMessage,
+  });
+}
+
+function uploadGalleryImage(req, res, next) {
+  upload.single("image")(req, res, async (err) => {
+    if (!err) return next();
+
+    const errorMessage =
+      err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE"
+        ? "Please upload an image smaller than 4 MB."
+        : err.message || "Could not upload the photo.";
+
+    return renderOwnerGalleryUploadError(req, res, errorMessage);
+  });
+}
 
 function cleanWhatsAppNumber(value) {
   return String(value || "").replace(/[^\d]/g, "");
@@ -152,7 +186,7 @@ router.get("/owner/gallery", requireOwner, async (req, res) => {
   });
 });
 
-router.post("/owner/gallery", requireTrustedOrigin, requireOwner, ownerWriteLimit, upload.single("image"), requireCsrf, rejectHoneypot, async (req, res) => {
+router.post("/owner/gallery", requireTrustedOrigin, requireOwner, ownerWriteLimit, uploadGalleryImage, requireCsrf, rejectHoneypot, async (req, res) => {
   try {
     await addGalleryItem({
       file: req.file,

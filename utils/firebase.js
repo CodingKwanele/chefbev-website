@@ -6,9 +6,13 @@ function getPrivateKey() {
   return process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
 }
 
+function getStorageBucketName() {
+  return process.env.FIREBASE_STORAGE_BUCKET?.replace(/^gs:\/\//, "").replace(/\/$/, "");
+}
+
 export function isFirebaseConfigured() {
   return Boolean(
-    process.env.FIREBASE_STORAGE_BUCKET &&
+    getStorageBucketName() &&
       ((process.env.FIREBASE_PROJECT_ID &&
         process.env.FIREBASE_CLIENT_EMAIL &&
         process.env.FIREBASE_PRIVATE_KEY) ||
@@ -33,7 +37,7 @@ export function getFirebaseApp() {
 
   app = admin.initializeApp({
     credential,
-    storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+    storageBucket: getStorageBucketName(),
   });
 
   return app;

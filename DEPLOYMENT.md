@@ -40,3 +40,6 @@ Keep `.env` and Firebase service-account JSON files out of Git.
 2. Open `/orders`, submit a test order, and confirm Firebase stores it.
 3. Confirm the order email arrives.
 4. Confirm the success page opens WhatsApp with the order reference.
+5. Open `/owner/login`, sign in, upload a gallery photo under 4 MB, and confirm it appears on `/gallery`.
+
+Gallery uploads go through a Vercel Function, so keep owner-uploaded images under 4 MB. Larger uploads should be resized or compressed before upload.
