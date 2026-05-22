@@ -4,8 +4,7 @@ const CSRF_COOKIE = "bev_csrf";
 const ONE_HOUR = 60 * 60 * 1000;
 
 // NOTE: This Map resets on every cold Vercel invocation — it only limits
-// traffic within a single warm instance. For real brute-force protection
-// replace with a persistent store (e.g. Upstash Redis).
+// traffic within a single warm instance when Upstash Redis is not configured.
 const buckets = new Map();
 
 function getSecret() {
@@ -122,6 +121,93 @@ function isLoopbackHost(host = "") {
   return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
 }
 
+function getClientIp(req) {
+  const forwardedFor = req.get("x-forwarded-for") || "";
+  const firstForwardedIp = forwardedFor.split(",")[0]?.trim();
+  return firstForwardedIp || req.ip || req.socket?.remoteAddress || "unknown";
+}
+
+function rateLimitIdentity(req) {
+  return crypto
+    .createHmac("sha256", getSecret())
+    .update(getClientIp(req))
+    .digest("hex")
+    .slice(0, 32);
+}
+
+function isRedisRateLimitConfigured() {
+  return Boolean(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
+}
+
+async function upstashPipeline(commands) {
+  const url = `${process.env.UPSTASH_REDIS_REST_URL.replace(/\/$/, "")}/pipeline`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 2500);
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(commands),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Upstash rate limit request failed with HTTP ${response.status}`);
+    }
+
+    const result = await response.json();
+    if (!Array.isArray(result)) {
+      throw new Error("Upstash rate limit response was not an array.");
+    }
+
+    const failed = result.find((entry) => entry?.error);
+    if (failed) {
+      throw new Error(failed.error);
+    }
+
+    return result.map((entry) => entry.result);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function redisRateLimit({ key, windowMs, max }) {
+  const windowSeconds = Math.ceil(windowMs / 1000);
+  const [count, , ttl] = await upstashPipeline([
+    ["INCR", key],
+    ["EXPIRE", key, windowSeconds, "NX"],
+    ["TTL", key],
+  ]);
+
+  return {
+    limited: Number(count) > max,
+    count: Number(count),
+    retryAfterSeconds: Number(ttl) > 0 ? Number(ttl) : windowSeconds,
+  };
+}
+
+function memoryRateLimit({ key, windowMs, max }) {
+  const now = Date.now();
+  const current = buckets.get(key);
+
+  if (!current || current.resetAt <= now) {
+    buckets.set(key, { count: 1, resetAt: now + windowMs });
+    return { limited: false, count: 1, retryAfterSeconds: Math.ceil(windowMs / 1000) };
+  }
+
+  current.count += 1;
+
+  return {
+    limited: current.count > max,
+    count: current.count,
+    retryAfterSeconds: Math.max(1, Math.ceil((current.resetAt - now) / 1000)),
+  };
+}
+
 function setCookie(res, name, value, options = {}) {
   const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
   const httpOnly = options.httpOnly === false ? "" : "; HttpOnly";
@@ -212,24 +298,30 @@ export function rejectHoneypot(req, res, next) {
 }
 
 export function rateLimit({ windowMs = ONE_HOUR, max = 60, keyPrefix = "global" } = {}) {
-  return (req, res, next) => {
-    const now = Date.now();
-    const ip = req.ip || req.socket?.remoteAddress || "unknown";
-    const key = `${keyPrefix}:${ip}`;
-    const current = buckets.get(key);
+  return async (req, res, next) => {
+    const identity = rateLimitIdentity(req);
+    const key = `ratelimit:${keyPrefix}:${identity}`;
 
-    if (!current || current.resetAt <= now) {
-      buckets.set(key, { count: 1, resetAt: now + windowMs });
+    try {
+      const result = isRedisRateLimitConfigured()
+        ? await redisRateLimit({ key, windowMs, max })
+        : memoryRateLimit({ key, windowMs, max });
+
+      res.setHeader("X-RateLimit-Limit", String(max));
+      res.setHeader("X-RateLimit-Remaining", String(Math.max(0, max - result.count)));
+
+      if (!result.limited) return next();
+
+      res.setHeader("Retry-After", String(result.retryAfterSeconds));
+      return res.status(429).send("Too many requests. Please try again later.");
+    } catch (err) {
+      console.error("Rate limit check failed:", {
+        keyPrefix,
+        message: err.message,
+      });
+
       return next();
     }
-
-    current.count += 1;
-
-    if (current.count > max) {
-      return res.status(429).send("Too many requests. Please try again later.");
-    }
-
-    return next();
   };
 }
 

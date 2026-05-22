@@ -15,6 +15,9 @@ BEV_WHATSAPP=27000000000
 OWNER_PASSWORD=replace-with-a-strong-owner-password
 OWNER_SESSION_SECRET=replace-with-at-least-32-random-characters
 
+UPSTASH_REDIS_REST_URL=
+UPSTASH_REDIS_REST_TOKEN=
+
 FIREBASE_PROJECT_ID=
 FIREBASE_CLIENT_EMAIL=
 FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
@@ -34,6 +37,10 @@ TIKTOK_URL=
 Keep `.env` and Firebase service-account JSON files out of Git.
 
 Gallery images are stored in the codebase under `public/img/gallery` and listed in `utils/galleryStore.js`. Firebase Storage is not required for gallery photos.
+
+## Persistent Rate Limiting
+
+Create an Upstash Redis database, then add `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` to Vercel. When these are present, `/orders`, `/contact`, and `/owner/login` use persistent rate limits across Vercel serverless instances. Without them, the app falls back to local in-memory rate limits for development.
 
 ## After Deploying
 
