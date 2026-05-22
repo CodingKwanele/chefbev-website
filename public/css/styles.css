@@ -150,14 +150,6 @@ img {
   font-weight: 700;
 }
 
-.nav__logo {
-  height: 42px;
-  width: auto;
-  border-radius: 10px;
-  box-shadow: var(--shadow-soft);
-  border: 2px solid var(--surface);
-}
-
 .brandtext {
   font-weight: 900;
   letter-spacing: 0.25px;
