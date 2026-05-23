@@ -1,0 +1,452 @@
+<section class="section owner-dashboard-page">
+  <div class="container owner-shell owner-shell--wide">
+    <div class="section__head owner-head owner-head--desk">
+      <div>
+        <p class="owner-kicker">Owner workspace</p>
+        <h1 class="section__title">Today at Chef Bev</h1>
+        <p class="section__sub">
+          A simple view of customers waiting, cakes coming up, and messages that may need a personal follow-up.
+        </p>
+      </div>
+
+      <div class="owner-head__actions">
+        <a class="btn btn--ghost" href="/owner/gallery">Gallery</a>
+        <form method="post" action="/owner/logout">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+          <button class="btn btn--ghost" type="submit">Log out</button>
+        </form>
+      </div>
+    </div>
+
+    <% if (success) { %>
+      <div class="alert alert--success"><%= success %></div>
+    <% } %>
+
+    <% if (error) { %>
+      <div class="alert alert--error"><%= error %></div>
+    <% } %>
+
+    <div class="desk-guide">
+      <div>
+        <p class="desk-guide__eyebrow">Most important</p>
+        <h2><%= stats.needsReply ? `${stats.needsReply} customer${stats.needsReply === 1 ? '' : 's'} waiting for Bev` : 'No customers waiting right now' %></h2>
+        <p><%= stats.needsReply ? 'Open WhatsApp from the customer card, then save the new stage so the list stays tidy.' : 'New orders and messages will appear here when they arrive.' %></p>
+      </div>
+      <a class="btn btn--primary" href="#needs-reply"><%= stats.needsReply ? 'Reply now' : 'View work' %></a>
+    </div>
+
+    <div class="dashboard-stats order-desk-stats">
+      <button class="dash-stat" type="button" data-filter-type="status" data-filter-value="Needs Reply" data-filter-label="waiting customers">
+        <div class="dash-stat__tone dash-stat__tone--blue"></div>
+        <div class="dash-stat__value"><%= stats.needsReply %></div>
+        <div class="dash-stat__label">Waiting</div>
+        <div class="dash-stat__hint">Customers who need a reply</div>
+      </button>
+      <button class="dash-stat" type="button" data-filter-type="scope" data-filter-value="upcoming" data-filter-label="cakes due soon">
+        <div class="dash-stat__tone dash-stat__tone--purple"></div>
+        <div class="dash-stat__value"><%= stats.upcomingOrders %></div>
+        <div class="dash-stat__label">Due soon</div>
+        <div class="dash-stat__hint">Cakes in the next 7 days</div>
+      </button>
+      <button class="dash-stat" type="button" data-filter-type="scope" data-filter-value="active" data-filter-label="orders in progress">
+        <div class="dash-stat__tone dash-stat__tone--green"></div>
+        <div class="dash-stat__value"><%= stats.confirmedOrders %></div>
+        <div class="dash-stat__label">In progress</div>
+        <div class="dash-stat__hint">Confirmed, paid, or baking soon</div>
+      </button>
+      <button class="dash-stat <%= stats.failedNotifications ? 'dash-stat--warning' : '' %>" type="button" data-filter-type="email" data-filter-value="failed" data-filter-label="email checks">
+        <div class="dash-stat__tone dash-stat__tone--red"></div>
+        <div class="dash-stat__value"><%= stats.failedNotifications %></div>
+        <div class="dash-stat__label">Email checks</div>
+        <div class="dash-stat__hint">Use WhatsApp when email fails</div>
+      </button>
+    </div>
+
+    <% if (!stats.needsReply && !stats.failedNotifications) { %>
+      <div class="empty empty--caught-up">
+        <div class="empty__title">You are caught up.</div>
+        <div class="empty__sub">No customers need a reply right now.</div>
+      </div>
+    <% } %>
+
+    <section class="desk-section insight-panel" aria-label="Order desk insights">
+      <div class="dashboard-panel__head">
+        <h2>At a glance</h2>
+        <button class="btn btn--ghost btn--compact" type="button" data-clear-desk-filter hidden>Clear filter</button>
+      </div>
+
+      <div class="insight-filter" data-filter-summary hidden></div>
+
+      <div class="insight-grid">
+        <div class="insight-card">
+          <h3>Order stages</h3>
+          <div class="mini-chart mini-chart--horizontal">
+            <% insights.statusCounts.forEach((item) => { %>
+              <button class="mini-bar" type="button" data-filter-type="status" data-filter-value="<%= item.label %>" data-filter-label="<%= item.label %>" aria-label="Show <%= item.label %> orders">
+                <span class="mini-bar__label"><%= item.label %></span>
+                <span class="mini-bar__track">
+                  <span class="mini-bar__fill" style="width: <%= Math.max(4, Math.round((item.value / insights.maxStatus) * 100)) %>%"></span>
+                </span>
+                <span class="mini-bar__value"><%= item.value %></span>
+              </button>
+            <% }) %>
+          </div>
+        </div>
+
+        <div class="insight-card">
+          <h3>Next 7 days</h3>
+          <div class="mini-chart mini-chart--vertical">
+            <% insights.upcomingDays.forEach((day) => { %>
+              <button class="day-bar" type="button" data-filter-type="date" data-filter-value="<%= day.key %>" data-filter-label="<%= day.label %>" aria-label="Show cakes for <%= day.label %>">
+                <span class="day-bar__value"><%= day.value %></span>
+                <span class="day-bar__track">
+                  <span class="day-bar__fill" style="height: <%= Math.max(6, Math.round((day.value / insights.maxUpcoming) * 100)) %>%"></span>
+                </span>
+                <span class="day-bar__label"><%= day.label %></span>
+              </button>
+            <% }) %>
+          </div>
+        </div>
+
+        <div class="insight-card">
+          <h3>Email status</h3>
+          <div class="mini-chart mini-chart--horizontal">
+            <% insights.emailHealth.forEach((item) => { %>
+              <button
+                class="mini-bar <%= item.filter === 'failed' && item.value ? 'mini-bar--warning' : '' %>"
+                type="button"
+                data-filter-type="email"
+                data-filter-value="<%= item.filter %>"
+                data-filter-label="<%= item.label %>"
+                aria-label="Show <%= item.label %> email items"
+              >
+                <span class="mini-bar__label"><%= item.label %></span>
+                <span class="mini-bar__track">
+                  <span class="mini-bar__fill" style="width: <%= Math.max(4, Math.round((item.value / insights.maxEmail) * 100)) %>%"></span>
+                </span>
+                <span class="mini-bar__value"><%= item.value %></span>
+              </button>
+            <% }) %>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="desk-section filter-results" data-filter-results hidden>
+      <div class="dashboard-panel__head">
+        <h2>Matching items</h2>
+        <span data-filter-count>0 shown</span>
+      </div>
+
+      <div class="work-list">
+        <% orders.forEach((order) => { %>
+          <% const orderStatus = normalizedOrderStatus(order.status); %>
+          <article
+            class="work-item desk-filter-record <%= order.emailNotification?.status === 'failed' ? 'work-item--warning' : '' %>"
+            data-record-kind="order"
+            data-record-status="<%= orderStatus %>"
+            data-record-date="<%= order.eventDate ? new Date(order.eventDate).toISOString().slice(0, 10) : '' %>"
+            data-record-email="<%= order.emailNotification?.status || 'pending' %>"
+            data-record-upcoming="<%= isUpcomingOrder(order) ? 'true' : 'false' %>"
+            data-record-active="<%= ['Confirmed', 'Paid', 'Baking Soon'].includes(orderStatus) ? 'true' : 'false' %>"
+            hidden
+          >
+            <div class="work-item__top">
+              <div>
+                <h3><%= order.customerName %></h3>
+                <p><%= order.eventDate ? new Date(order.eventDate).toLocaleDateString('en-ZA') : 'No date' %> - <%= order.occasion %></p>
+              </div>
+              <span class="status-pill status-pill--<%= orderStatus.toLowerCase().replaceAll(' ', '-') %>"><%= orderStatus %></span>
+            </div>
+            <div class="work-meta">
+              <span><strong>Phone:</strong> <%= order.phone || 'Not provided' %></span>
+              <span><strong>Flavour:</strong> <%= order.flavour %></span>
+              <span><strong>Size:</strong> <%= order.size %></span>
+            </div>
+            <form class="owner-update owner-update--inline" method="post" action="/owner/orders/<%= order._id %>">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+              <select class="field__input" name="status" aria-label="Order status">
+                <% orderStatuses.forEach((status) => { %>
+                  <option value="<%= status %>" <%= orderStatus === status ? 'selected' : '' %>><%= status %></option>
+                <% }) %>
+              </select>
+              <div class="owner-update__actions">
+                <% if (orderWhatsAppUrl(order)) { %>
+                  <a class="btn btn--primary" href="<%= orderWhatsAppUrl(order) %>" target="_blank" rel="noopener">WhatsApp</a>
+                <% } %>
+                <button class="btn btn--ghost" type="submit">Save</button>
+              </div>
+            </form>
+          </article>
+        <% }) %>
+
+        <% contacts.forEach((contact) => { %>
+          <% const contactStatus = normalizedContactStatus(contact.status); %>
+          <article
+            class="work-item desk-filter-record <%= contact.emailNotification?.status === 'failed' ? 'work-item--warning' : '' %>"
+            data-record-kind="contact"
+            data-record-status="<%= contactStatus %>"
+            data-record-date=""
+            data-record-email="<%= contact.emailNotification?.status || 'pending' %>"
+            data-record-upcoming="false"
+            data-record-active="false"
+            hidden
+          >
+            <div class="work-item__top">
+              <div>
+                <h3><%= contact.name %></h3>
+                <p><%= contact.subject %></p>
+              </div>
+              <span class="status-pill status-pill--<%= contactStatus.toLowerCase().replaceAll(' ', '-') %>"><%= contactStatus %></span>
+            </div>
+            <p class="work-notes"><span>Message</span><%= contact.message %></p>
+            <div class="owner-update__actions owner-update__actions--left">
+              <% if (contactWhatsAppUrl(contact)) { %>
+                <a class="btn btn--primary" href="<%= contactWhatsAppUrl(contact) %>" target="_blank" rel="noopener">WhatsApp</a>
+              <% } %>
+              <a class="btn btn--ghost" href="mailto:<%= contact.email %>">Email</a>
+            </div>
+          </article>
+        <% }) %>
+      </div>
+
+      <div class="empty filter-results__empty" data-filter-empty hidden>
+        <div class="empty__title">Nothing found here</div>
+        <div class="empty__sub">Try another card or clear the filter.</div>
+      </div>
+    </section>
+
+    <section class="desk-section" id="needs-reply" data-default-section>
+      <div class="dashboard-panel__head">
+        <h2>Waiting for a reply</h2>
+        <span><%= sections.needsReplyOrders.length + sections.needsReplyContacts.length %> waiting</span>
+      </div>
+
+      <div class="desk-card-grid">
+        <% if (sections.needsReplyOrders.length || sections.needsReplyContacts.length) { %>
+          <% sections.needsReplyOrders.forEach((order) => { %>
+            <article
+              class="desk-card desk-record <%= order.emailNotification?.status === 'failed' ? 'desk-card--warning' : '' %>"
+              data-record-kind="order"
+              data-record-status="<%= normalizedOrderStatus(order.status) %>"
+              data-record-date="<%= order.eventDate ? new Date(order.eventDate).toISOString().slice(0, 10) : '' %>"
+              data-record-email="<%= order.emailNotification?.status || 'pending' %>"
+            >
+              <div class="desk-card__top">
+                <div>
+                  <p class="desk-card__eyebrow">Cake order</p>
+                  <h3><%= order.customerName %></h3>
+                  <p><%= order.occasion %> - <%= order.eventDate ? new Date(order.eventDate).toLocaleDateString('en-ZA') : 'No event date yet' %></p>
+                </div>
+                <span class="status-pill status-pill--<%= normalizedOrderStatus(order.status).toLowerCase().replaceAll(' ', '-') %>">
+                  <%= normalizedOrderStatus(order.status) %>
+                </span>
+              </div>
+
+              <p class="desk-card__summary">
+                <%= order.flavour %> - <%= order.size %><% if (order.style) { %> - <%= order.style %><% } %>
+              </p>
+
+              <div class="desk-contact-line">
+                <span><strong>Phone</strong> <%= order.phone || 'Not provided' %></span>
+                <span><strong>Email</strong> <%= order.email || 'Not provided' %></span>
+              </div>
+
+              <% if (order.notes) { %>
+                <p class="work-notes"><span>Customer note</span><%= order.notes %></p>
+              <% } %>
+
+              <% if (order.emailNotification?.status === 'failed') { %>
+                <div class="alert alert--error desk-card__alert">Email notification failed. Use WhatsApp to follow up.</div>
+              <% } %>
+
+              <form class="owner-update owner-update--compact" method="post" action="/owner/orders/<%= order._id %>">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                <label class="field">
+                  <span class="field__label">What stage is this order?</span>
+                  <select class="field__input" name="status">
+                    <% orderStatuses.forEach((status) => { %>
+                      <option value="<%= status %>" <%= normalizedOrderStatus(order.status) === status ? 'selected' : '' %>><%= status %></option>
+                    <% }) %>
+                  </select>
+                </label>
+                <label class="field field--full">
+                  <span class="field__label">Private note for Bev</span>
+                  <textarea class="field__input" name="internalNotes" rows="2" maxlength="1200" placeholder="Example: Quote sent. Waiting for deposit."><%= order.internalNotes || '' %></textarea>
+                </label>
+                <div class="owner-update__actions">
+                  <% if (orderWhatsAppUrl(order)) { %>
+                    <a class="btn btn--primary" href="<%= orderWhatsAppUrl(order) %>" target="_blank" rel="noopener">Open WhatsApp</a>
+                  <% } %>
+                  <button class="btn btn--ghost" type="submit">Save</button>
+                </div>
+              </form>
+            </article>
+          <% }) %>
+
+          <% sections.needsReplyContacts.forEach((contact) => { %>
+            <article
+              class="desk-card desk-record <%= contact.emailNotification?.status === 'failed' ? 'desk-card--warning' : '' %>"
+              data-record-kind="contact"
+              data-record-status="<%= normalizedContactStatus(contact.status) %>"
+              data-record-date=""
+              data-record-email="<%= contact.emailNotification?.status || 'pending' %>"
+            >
+              <div class="desk-card__top">
+                <div>
+                  <p class="desk-card__eyebrow">Customer message</p>
+                  <h3><%= contact.name %></h3>
+                  <p><%= contact.subject %></p>
+                </div>
+                <span class="status-pill status-pill--<%= normalizedContactStatus(contact.status).toLowerCase().replaceAll(' ', '-') %>">
+                  <%= normalizedContactStatus(contact.status) %>
+                </span>
+              </div>
+
+              <div class="desk-contact-line">
+                <span><strong>Phone</strong> <%= contact.phone || 'Not provided' %></span>
+                <span><strong>Email</strong> <%= contact.email || 'Not provided' %></span>
+              </div>
+
+              <p class="work-notes"><span>Message</span><%= contact.message %></p>
+
+              <% if (contact.emailNotification?.status === 'failed') { %>
+                <div class="alert alert--error desk-card__alert">Email notification failed. Use WhatsApp or email to follow up.</div>
+              <% } %>
+
+              <form class="owner-update owner-update--compact" method="post" action="/owner/contacts/<%= contact._id %>">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                <label class="field">
+                  <span class="field__label">What stage is this message?</span>
+                  <select class="field__input" name="status">
+                    <% contactStatuses.forEach((status) => { %>
+                      <option value="<%= status %>" <%= normalizedContactStatus(contact.status) === status ? 'selected' : '' %>><%= status %></option>
+                    <% }) %>
+                  </select>
+                </label>
+                <label class="field field--full">
+                  <span class="field__label">Private note for Bev</span>
+                  <textarea class="field__input" name="internalNotes" rows="2" maxlength="1200" placeholder="Example: Replied on WhatsApp."><%= contact.internalNotes || '' %></textarea>
+                </label>
+                <div class="owner-update__actions">
+                  <% if (contactWhatsAppUrl(contact)) { %>
+                    <a class="btn btn--primary" href="<%= contactWhatsAppUrl(contact) %>" target="_blank" rel="noopener">Open WhatsApp</a>
+                  <% } %>
+                  <a class="btn btn--ghost" href="mailto:<%= contact.email %>">Email</a>
+                  <button class="btn btn--ghost" type="submit">Save</button>
+                </div>
+              </form>
+            </article>
+          <% }) %>
+        <% } else { %>
+          <div class="empty">
+            <div class="empty__title">No replies waiting</div>
+            <div class="empty__sub">New orders and inquiries will appear here first.</div>
+          </div>
+        <% } %>
+      </div>
+    </section>
+
+    <div class="dashboard-grid order-desk-grid" data-default-section>
+      <section class="dashboard-panel">
+        <div class="dashboard-panel__head">
+          <h2>Cakes coming up</h2>
+          <span><%= sections.upcomingOrders.length %> soon</span>
+        </div>
+
+        <div class="work-list">
+          <% if (sections.upcomingOrders.length) { %>
+            <% sections.upcomingOrders.forEach((order) => { %>
+              <article
+                class="work-item desk-record"
+                data-record-kind="order"
+                data-record-status="<%= normalizedOrderStatus(order.status) %>"
+                data-record-date="<%= order.eventDate ? new Date(order.eventDate).toISOString().slice(0, 10) : '' %>"
+                data-record-email="<%= order.emailNotification?.status || 'pending' %>"
+              >
+                <div class="work-item__top">
+                  <div>
+                    <h3><%= order.customerName %></h3>
+                    <p><%= order.eventDate ? new Date(order.eventDate).toLocaleDateString('en-ZA') : 'No date' %> - <%= order.occasion %></p>
+                  </div>
+                  <span class="status-pill status-pill--<%= normalizedOrderStatus(order.status).toLowerCase().replaceAll(' ', '-') %>">
+                    <%= normalizedOrderStatus(order.status) %>
+                  </span>
+                </div>
+                <div class="work-meta">
+                  <span><strong>Customer phone:</strong> <%= order.phone %></span>
+                  <span><strong>Flavour:</strong> <%= order.flavour %></span>
+                  <span><strong>Size:</strong> <%= order.size %></span>
+                </div>
+                <form class="owner-update owner-update--inline" method="post" action="/owner/orders/<%= order._id %>">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                  <select class="field__input" name="status" aria-label="Order status">
+                    <% orderStatuses.forEach((status) => { %>
+                      <option value="<%= status %>" <%= normalizedOrderStatus(order.status) === status ? 'selected' : '' %>><%= status %></option>
+                    <% }) %>
+                  </select>
+                  <div class="owner-update__actions">
+                    <% if (orderWhatsAppUrl(order)) { %>
+                      <a class="btn btn--primary" href="<%= orderWhatsAppUrl(order) %>" target="_blank" rel="noopener">WhatsApp</a>
+                    <% } %>
+                    <button class="btn btn--ghost" type="submit">Save</button>
+                  </div>
+                </form>
+              </article>
+            <% }) %>
+          <% } else { %>
+            <div class="empty">
+              <div class="empty__title">No upcoming cakes this week</div>
+              <div class="empty__sub">Confirmed cakes due soon will appear here.</div>
+            </div>
+          <% } %>
+        </div>
+      </section>
+
+      <section class="dashboard-panel">
+        <div class="dashboard-panel__head">
+          <h2>Recent messages</h2>
+          <span><%= sections.recentContacts.length %> shown</span>
+        </div>
+
+        <div class="work-list">
+          <% if (sections.recentContacts.length) { %>
+            <% sections.recentContacts.forEach((contact) => { %>
+              <article
+                class="work-item desk-record"
+                data-record-kind="contact"
+                data-record-status="<%= normalizedContactStatus(contact.status) %>"
+                data-record-date=""
+                data-record-email="<%= contact.emailNotification?.status || 'pending' %>"
+              >
+                <div class="work-item__top">
+                  <div>
+                    <h3><%= contact.name %></h3>
+                    <p><%= contact.subject %></p>
+                  </div>
+                  <span class="status-pill status-pill--<%= normalizedContactStatus(contact.status).toLowerCase().replaceAll(' ', '-') %>">
+                    <%= normalizedContactStatus(contact.status) %>
+                  </span>
+                </div>
+                <p class="work-notes"><span>Message</span><%= contact.message %></p>
+                <div class="owner-update__actions owner-update__actions--left">
+                  <% if (contactWhatsAppUrl(contact)) { %>
+                    <a class="btn btn--primary" href="<%= contactWhatsAppUrl(contact) %>" target="_blank" rel="noopener">WhatsApp</a>
+                  <% } %>
+                  <a class="btn btn--ghost" href="mailto:<%= contact.email %>">Email</a>
+                </div>
+              </article>
+            <% }) %>
+          <% } else { %>
+            <div class="empty">
+              <div class="empty__title">No recent inquiries</div>
+              <div class="empty__sub">Website messages will appear here.</div>
+            </div>
+          <% } %>
+        </div>
+      </section>
+    </div>
+  </div>
+</section>
+
+<script src="/js/order-desk.js?v=matching-items-1" defer></script>

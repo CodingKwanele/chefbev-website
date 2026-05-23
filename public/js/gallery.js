@@ -4,6 +4,7 @@
   const cards = document.querySelectorAll(".gcard");
   const search = document.getElementById("gallerySearch");
   const empty = document.getElementById("galleryEmpty");
+  const count = document.getElementById("galleryCount");
 
   const modal = document.getElementById("galleryModal");
   const modalImg = document.getElementById("modalImg");
@@ -38,6 +39,10 @@
     if (empty) {
       empty.hidden = shown !== 0;
     }
+
+    if (count) {
+      count.textContent = `${shown} design${shown === 1 ? "" : "s"} shown`;
+    }
   }
 
   tabs.forEach((tab) => {
@@ -60,7 +65,7 @@
   }
 
   // Quick view modal
-  document.querySelectorAll(".gcard__preview").forEach((btn) => {
+  document.querySelectorAll(".gcard__preview, .gcard__preview-action").forEach((btn) => {
     btn.addEventListener("click", () => {
       lastFocusedElement = btn;
 

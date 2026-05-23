@@ -1,6 +1,8 @@
 import { getFirestore, isFirebaseConfigured } from "./firebase.js";
 import { assertMin, cleanText, isEmail, isPhone, optionalText, removeUndefined } from "./validation.js";
 
+export const contactStatuses = ["Needs Reply", "Replied", "Resolved", "Archived"];
+
 export async function createContact(form) {
   if (!isFirebaseConfigured()) {
     throw new Error("Firebase is not configured. Contact messages cannot be saved yet.");
@@ -12,7 +14,7 @@ export async function createContact(form) {
     phone: optionalText(form.phone, 30),
     subject: cleanText(form.subject, 100),
     message: cleanText(form.message, 1000),
-    status: "New",
+    status: "Needs Reply",
     createdAt: new Date(),
     updatedAt: new Date(),
   });
@@ -47,4 +49,61 @@ export async function updateContactNotification(id, notification) {
     }),
     updatedAt: new Date(),
   });
+}
+
+function serializeDate(value) {
+  if (!value) return null;
+  if (typeof value.toDate === "function") return value.toDate();
+  return value;
+}
+
+function serializeContact(doc) {
+  const data = doc.data();
+
+  return {
+    id: doc.id,
+    _id: doc.id,
+    ...data,
+    createdAt: serializeDate(data.createdAt),
+    updatedAt: serializeDate(data.updatedAt),
+    emailNotification: data.emailNotification
+      ? {
+          ...data.emailNotification,
+          updatedAt: serializeDate(data.emailNotification.updatedAt),
+        }
+      : null,
+  };
+}
+
+export async function getOwnerContacts({ limit = 30 } = {}) {
+  if (!isFirebaseConfigured()) return [];
+
+  const snapshot = await getFirestore()
+    .collection("contacts")
+    .orderBy("createdAt", "desc")
+    .limit(limit)
+    .get();
+
+  return snapshot.docs.map(serializeContact);
+}
+
+export async function updateContactOwnerFields(id, form = {}) {
+  if (!isFirebaseConfigured() || !id) return;
+
+  const status = cleanText(form.status, 40);
+  const hasInternalNotes = Object.prototype.hasOwnProperty.call(form, "internalNotes");
+  const internalNotes = hasInternalNotes ? optionalText(form.internalNotes, 1200) || "" : undefined;
+
+  if (!contactStatuses.includes(status)) {
+    throw new Error("Invalid contact status.");
+  }
+
+  await getFirestore()
+    .collection("contacts")
+    .doc(id)
+    .update({
+      status,
+      ...(hasInternalNotes ? { internalNotes } : {}),
+      updatedAt: new Date(),
+    });
 }

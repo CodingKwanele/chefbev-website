@@ -11,6 +11,16 @@ import {
 } from "./validation.js";
 
 const occasions = ["Birthday", "Wedding", "Graduation", "Baby Shower", "Corporate", "Other"];
+export const orderStatuses = [
+  "Needs Reply",
+  "Discussing",
+  "Quote Sent",
+  "Confirmed",
+  "Paid",
+  "Baking Soon",
+  "Collected",
+  "Cancelled",
+];
 const budgets = ["", "R500–R800", "R800–R1200", "R1200–R2000", "R2000+"];
 
 function parseFutureDate(value) {
@@ -49,7 +59,7 @@ export async function createOrder(form) {
     fulfilment: "Pickup",
     notes: cleanText(form.notes, 1200),
     inspirationUrl: optionalText(form.inspirationUrl, 300),
-    status: "New",
+    status: "Needs Reply",
     createdAt: new Date(),
     updatedAt: new Date(),
   });
@@ -86,4 +96,63 @@ export async function updateOrderNotification(id, notification) {
     }),
     updatedAt: new Date(),
   });
+}
+
+function serializeDate(value) {
+  if (!value) return null;
+  if (typeof value.toDate === "function") return value.toDate();
+  return value;
+}
+
+function serializeOrder(doc) {
+  const data = doc.data();
+
+  return {
+    id: doc.id,
+    _id: doc.id,
+    ...data,
+    createdAt: serializeDate(data.createdAt),
+    updatedAt: serializeDate(data.updatedAt),
+    eventDate: serializeDate(data.eventDate),
+    completedAt: serializeDate(data.completedAt),
+    emailNotification: data.emailNotification
+      ? {
+          ...data.emailNotification,
+          updatedAt: serializeDate(data.emailNotification.updatedAt),
+        }
+      : null,
+  };
+}
+
+export async function getOwnerOrders({ limit = 40 } = {}) {
+  if (!isFirebaseConfigured()) return [];
+
+  const snapshot = await getFirestore()
+    .collection("orders")
+    .orderBy("createdAt", "desc")
+    .limit(limit)
+    .get();
+
+  return snapshot.docs.map(serializeOrder);
+}
+
+export async function updateOrderOwnerFields(id, form = {}) {
+  if (!isFirebaseConfigured() || !id) return;
+
+  const status = cleanText(form.status, 40);
+  const hasInternalNotes = Object.prototype.hasOwnProperty.call(form, "internalNotes");
+  const internalNotes = hasInternalNotes ? optionalText(form.internalNotes, 1200) || "" : undefined;
+
+  if (!orderStatuses.includes(status)) {
+    throw new Error("Invalid order status.");
+  }
+
+  await getFirestore().collection("orders").doc(id).update(
+    removeUndefined({
+      status,
+      ...(hasInternalNotes ? { internalNotes } : {}),
+      completedAt: status === "Collected" ? new Date() : undefined,
+      updatedAt: new Date(),
+    })
+  );
 }

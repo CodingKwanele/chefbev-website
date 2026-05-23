@@ -1,13 +1,25 @@
 // routes/index.js
 import { Router } from "express";
 import { sendContactEmail, sendOrderEmail } from "../utils/email.js";
-import { createContact, updateContactNotification } from "../utils/contactStore.js";
+import {
+  contactStatuses,
+  createContact,
+  getOwnerContacts,
+  updateContactNotification,
+  updateContactOwnerFields,
+} from "../utils/contactStore.js";
 import {
   categories,
   fallbackGalleryItems,
   getGalleryItems,
 } from "../utils/galleryStore.js";
-import { createOrder, updateOrderNotification } from "../utils/orderStore.js";
+import {
+  createOrder,
+  getOwnerOrders,
+  orderStatuses,
+  updateOrderNotification,
+  updateOrderOwnerFields,
+} from "../utils/orderStore.js";
 import {
   clearOwnerCookie,
   isOwnerConfigured,
@@ -26,6 +38,7 @@ import {
 const router = Router();
 const ownerLoginLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 8, keyPrefix: "owner-login" });
 const formSubmitLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, keyPrefix: "form-submit" });
+const ownerWriteLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 40, keyPrefix: "owner-write" });
 
 function cleanWhatsAppNumber(value) {
   return String(value || "").replace(/[^\d]/g, "");
@@ -103,6 +116,146 @@ function buildContactWhatsAppMessage(contact) {
     .join("\n");
 }
 
+function ownerWhatsAppUrl(phone, message) {
+  const cleanedPhone = cleanWhatsAppNumber(phone);
+  if (!cleanedPhone) return "";
+  return `https://wa.me/${cleanedPhone}?text=${encodeURIComponent(message)}`;
+}
+
+function normalizedOrderStatus(status) {
+  const legacy = {
+    New: "Needs Reply",
+    Contacted: "Discussing",
+    Quoted: "Quote Sent",
+    Completed: "Collected",
+  };
+
+  return legacy[status] || status || "Needs Reply";
+}
+
+function normalizedContactStatus(status) {
+  const legacy = {
+    New: "Needs Reply",
+    Contacted: "Replied",
+  };
+
+  return legacy[status] || status || "Needs Reply";
+}
+
+function isOrderAttentionStatus(status) {
+  return ["Needs Reply", "Discussing", "Quote Sent"].includes(normalizedOrderStatus(status));
+}
+
+function isContactAttentionStatus(status) {
+  return normalizedContactStatus(status) === "Needs Reply";
+}
+
+function isUpcomingOrder(order) {
+  if (!order.eventDate) return false;
+
+  const status = normalizedOrderStatus(order.status);
+  if (["Collected", "Cancelled"].includes(status)) return false;
+
+  const eventDate = new Date(order.eventDate);
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  eventDate.setHours(0, 0, 0, 0);
+  const sevenDays = 7 * 24 * 60 * 60 * 1000;
+
+  return eventDate >= now && eventDate.getTime() - now.getTime() <= sevenDays;
+}
+
+function dateKey(value) {
+  if (!value) return "";
+  return new Date(value).toISOString().slice(0, 10);
+}
+
+function shortWeekday(value) {
+  return new Date(value).toLocaleDateString("en-ZA", {
+    weekday: "short",
+    day: "numeric",
+  });
+}
+
+function orderDeskStats(orders, contacts) {
+  const needsReplyOrders = orders.filter((order) => isOrderAttentionStatus(order.status));
+  const needsReplyContacts = contacts.filter((contact) => isContactAttentionStatus(contact.status));
+
+  return {
+    needsReply: needsReplyOrders.length + needsReplyContacts.length,
+    upcomingOrders: orders.filter(isUpcomingOrder).length,
+    confirmedOrders: orders.filter((order) =>
+      ["Confirmed", "Paid", "Baking Soon"].includes(normalizedOrderStatus(order.status))
+    ).length,
+    failedNotifications: [...orders, ...contacts].filter(
+      (item) => item.emailNotification?.status === "failed"
+    ).length,
+  };
+}
+
+function orderDeskInsights(orders, contacts) {
+  const statusCounts = orderStatuses.map((status) => ({
+    label: status,
+    value: orders.filter((order) => normalizedOrderStatus(order.status) === status).length,
+  }));
+  const maxStatus = Math.max(1, ...statusCounts.map((item) => item.value));
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const upcomingDays = Array.from({ length: 7 }, (_, index) => {
+    const day = new Date(today);
+    day.setDate(today.getDate() + index);
+    const key = dateKey(day);
+    const value = orders.filter((order) => dateKey(order.eventDate) === key).length;
+
+    return {
+      key,
+      label: index === 0 ? "Today" : shortWeekday(day),
+      value,
+    };
+  });
+  const maxUpcoming = Math.max(1, ...upcomingDays.map((item) => item.value));
+
+  const emailHealth = [
+    {
+      label: "Sent",
+      value: [...orders, ...contacts].filter((item) => item.emailNotification?.status === "sent")
+        .length,
+      filter: "sent",
+    },
+    {
+      label: "Failed",
+      value: [...orders, ...contacts].filter((item) => item.emailNotification?.status === "failed")
+        .length,
+      filter: "failed",
+    },
+    {
+      label: "Pending",
+      value: [...orders, ...contacts].filter((item) => !item.emailNotification?.status).length,
+      filter: "pending",
+    },
+  ];
+  const maxEmail = Math.max(1, ...emailHealth.map((item) => item.value));
+
+  return {
+    statusCounts,
+    maxStatus,
+    upcomingDays,
+    maxUpcoming,
+    emailHealth,
+    maxEmail,
+  };
+}
+
+function orderDeskSections(orders, contacts) {
+  return {
+    needsReplyOrders: orders.filter((order) => isOrderAttentionStatus(order.status)),
+    needsReplyContacts: contacts.filter((contact) => isContactAttentionStatus(contact.status)),
+    upcomingOrders: orders.filter(isUpcomingOrder),
+    recentContacts: contacts.slice(0, 8),
+  };
+}
+
 // Home
 router.get("/", async (req, res) => {
   let featuredItems = [];
@@ -169,12 +322,78 @@ router.post("/owner/login", requireTrustedOrigin, ownerLoginLimit, requireCsrf, 
   }
 
   setOwnerCookie(res);
-  return res.redirect("/owner/gallery");
+  return res.redirect("/owner/order-desk");
 });
 
 router.post("/owner/logout", requireTrustedOrigin, requireOwner, requireCsrf, (req, res) => {
   clearOwnerCookie(res);
   res.redirect("/owner/login");
+});
+
+router.get("/owner/dashboard", requireOwner, (req, res) => {
+  res.redirect("/owner/order-desk");
+});
+
+router.get("/owner/order-desk", requireOwner, async (req, res) => {
+  let orders = [];
+  let contacts = [];
+  let error = null;
+
+  try {
+    [orders, contacts] = await Promise.all([getOwnerOrders(), getOwnerContacts()]);
+  } catch (err) {
+    console.error("Owner order desk load error:", err.message);
+    error = err.message;
+  }
+
+  const sections = orderDeskSections(orders, contacts);
+
+  res.render("owner-order-desk", {
+    title: "Order Desk",
+    active: "owner",
+    orders,
+    contacts,
+    stats: orderDeskStats(orders, contacts),
+    sections,
+    insights: orderDeskInsights(orders, contacts),
+    orderStatuses,
+    contactStatuses,
+    normalizedOrderStatus,
+    normalizedContactStatus,
+    isUpcomingOrder,
+    orderWhatsAppUrl: (order) =>
+      ownerWhatsAppUrl(
+        order.phone,
+        `Hi ${order.customerName}, this is Chef Bev about your cake order ${order._id}.`
+      ),
+    contactWhatsAppUrl: (contact) =>
+      ownerWhatsAppUrl(
+        contact.phone,
+        `Hi ${contact.name}, this is Chef Bev replying to your website inquiry ${contact._id}.`
+      ),
+    success: req.query.success || null,
+    error,
+  });
+});
+
+router.post("/owner/orders/:id", requireTrustedOrigin, requireOwner, ownerWriteLimit, requireCsrf, async (req, res) => {
+  try {
+    await updateOrderOwnerFields(req.params.id, req.body);
+    res.redirect("/owner/order-desk?success=Order%20updated");
+  } catch (err) {
+    console.error("Owner order update error:", err.message);
+    res.redirect("/owner/order-desk");
+  }
+});
+
+router.post("/owner/contacts/:id", requireTrustedOrigin, requireOwner, ownerWriteLimit, requireCsrf, async (req, res) => {
+  try {
+    await updateContactOwnerFields(req.params.id, req.body);
+    res.redirect("/owner/order-desk?success=Contact%20updated");
+  } catch (err) {
+    console.error("Owner contact update error:", err.message);
+    res.redirect("/owner/order-desk");
+  }
 });
 
 // Owner gallery reference
